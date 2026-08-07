@@ -53,16 +53,20 @@ Each task also carries a **fate** — what happens to it after the build:
 
 | # | Task | Target file | Status | Fate |
 |---|------|-------------|--------|------|
-| 0.1 | Pick corpus source + pin (URL + SHA) | `corpus/SOURCE.md` | todo | permanent |
-| 0.2 | Selection criterion + full candidate list + exclusions | `corpus/SELECTION.md` | todo | permanent |
-| 0.3 | Dataset-sizing decision (branch-coverage, not volume) | `docs/adr/0002-dataset-sizing.md` | todo | permanent |
-| 0.4 | ADR-0001 non-circular gate (golden before model) | `docs/adr/0001-non-circular-gate.md` | todo | permanent |
-| 0.5 | ADR-0003 mechanical Mongo seed (pure fn of relational seed) | `docs/adr/0003-mechanical-mongo-seed.md` | todo | permanent |
-| 0.6 | ADR-0004 Claude Code as substrate (agents/skills/hooks/tools) | `docs/adr/0004-claude-code-substrate.md` | todo | permanent |
-| 0.7 | ADR-0005 Bash gate-tools now, MCP as stretch | `docs/adr/0005-tools-bash-then-mcp.md` | todo | permanent |
-| 0.8 | ADR-0006 mutation check as gate-validation | `docs/adr/0006-mutation-validation.md` | todo | permanent |
-| 0.9 | Architecture doc (the 3 README diagrams, expanded) | `docs/architecture.md` | todo | permanent |
-| 0.10 | Pre-registration: hypotheses + thresholds before run-001 | `evals/PREREGISTRATION.md` | todo | permanent |
+| 0.1 | Pick corpus source + pin (URL + SHA) | `corpus/SOURCE.md` | done | permanent |
+| 0.2 | Selection criterion + full candidate list + exclusions | `corpus/SELECTION.md` | wip | permanent |
+| 0.3 | Dataset-sizing decision (branch-coverage, not volume) | `docs/adr/0002-dataset-sizing.md` | done | permanent |
+| 0.4 | ADR-0001 non-circular gate (golden before model) | `docs/adr/0001-non-circular-gate.md` | done | permanent |
+| 0.5 | ADR-0003 mechanical Mongo seed (pure fn of relational seed) | `docs/adr/0003-mechanical-mongo-seed.md` | done | permanent |
+| 0.6 | ADR-0004 Claude Code as substrate (agents/skills/hooks/tools) | `docs/adr/0004-claude-code-substrate.md` | done | permanent |
+| 0.7 | ADR-0005 Bash gate-tools now, MCP as stretch | `docs/adr/0005-tools-bash-then-mcp.md` | done | permanent |
+| 0.8 | ADR-0006 mutation check as gate-validation | `docs/adr/0006-mutation-validation.md` | done | permanent |
+| 0.9 | Architecture doc (the 3 README diagrams, expanded) | `docs/architecture.md` | done | permanent |
+| 0.10 | Pre-registration: hypotheses + thresholds before run-001 | `evals/PREREGISTRATION.md` | done | permanent |
+
+> **0.2 is `wip`, not `done`:** the selection *criterion* is written and frozen,
+> but the full candidate table + exclusions are filled by `corpus/select.sql` in
+> Phase 1. The decision is made; the enumeration is a Phase-1 output.
 
 **Phase-0 exit:** every decision the later phases depend on is written and
 `Accepted`. No pipeline code until this is green.
