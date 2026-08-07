@@ -13,7 +13,7 @@ upstream source, and reproduce the whole thing without any private data.
 | File | `WideWorldImporters-Standard.bak` |
 | Upstream | Microsoft `sql-server-samples` GitHub release `wide-world-importers-v1.0` |
 | License | MIT |
-| SHA-256 | `<pinned at restore time — see corpus/restore.sh>` |
+| SHA-256 | `066279a8cd28c8d85cbd8215ea71a5d672b420cfbc19756b635c27bd8027dada` |
 
 > **Why Standard, not Full.** The **Full** backup uses in-memory OLTP filegroups
 > and columnstore features that fail to restore inside a Linux SQL Server
@@ -45,5 +45,6 @@ download without a note in `CHANGELOG.md`.
 
 - **Standard over Full** — chosen for Linux-container restore compatibility; this
   is a real constraint, not a preference.
-- The exact release tag `wide-world-importers-v1.0` and the SHA are placeholders
-  until `restore.sh` records them from the real download.
+- The SHA-256 above was recorded from the actual download
+  (`066279a8…027dada`, 121 MB) on 2026-08-07 and is now the pin `restore.sh`
+  enforces. The release tag is `wide-world-importers-v1.0`.

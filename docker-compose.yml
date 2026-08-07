@@ -1,0 +1,66 @@
+# The reproduction environment. `docker compose up -d` gives a reviewer the exact
+# two engines this artifact converts between, on NON-standard ports (11433 / 37017)
+# so they never collide with a SQL Server or Mongo the reviewer already runs on the
+# default 1433 / 27017. See docs/adr and corpus/SOURCE.md for the why.
+#
+# Nothing here is the artifact — the artifact is the golden capture and the gate.
+# This file only makes "reproduce from a clean clone" a single command.
+
+name: sql-to-service
+
+services:
+  # --- Source of truth: the original T-SQL runs here, unmodified. ---
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env}"
+      MSSQL_PID: Developer
+    ports:
+      - "${MSSQL_HOST_PORT:-11433}:1433"
+    volumes:
+      - mssql-data:/var/opt/mssql
+      - ./corpus:/corpus:ro          # restore.sh + the pinned .bak land here
+      - ./corpus/_bak:/var/opt/mssql/backup   # download target for the .bak
+    healthcheck:
+      # -C trusts the container's self-signed cert; 2022 ships sqlcmd at tools18.
+      test: >-
+        /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa
+        -P "$$MSSQL_SA_PASSWORD" -C -No -Q "SELECT 1" -b -h -1
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  # --- Target: the mechanical Mongo seed and the generated service read here. ---
+  mongo:
+    image: mongo:7.0
+    ports:
+      - "${MONGO_HOST_PORT:-37017}:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+
+  # --- Deterministic tooling: to_mongo.py + canonicalise.py run here, not on the
+  #     host. Keeps the seed pipeline reproducible regardless of host Python. ---
+  tools:
+    image: python:3.12-slim
+    working_dir: /work
+    volumes:
+      - ./:/work
+    # No long-running process; invoked ad hoc:
+    #   docker compose run --rm tools python corpus/seed/to_mongo.py ...
+    entrypoint: ["sleep", "infinity"]
+    profiles: ["tools"]
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+volumes:
+  mssql-data:
+  mongo-data:

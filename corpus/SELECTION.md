@@ -10,11 +10,22 @@ one-line reason.
 
 A procedure is **in** the corpus if and only if all of these hold:
 
-1. **Read-only.** No `INSERT` / `UPDATE` / `DELETE` / `MERGE`. A read path has a
-   golden output that is a pure function of the seed; a write path would need
-   state rollback between cases and muddies the differential.
+1. **No persistent state change.** No `INSERT` / `UPDATE` / `DELETE` / `MERGE`
+   against a *base table*. The rationale is what matters: the golden must be a
+   pure function of seed + params, with no state to roll back between cases. A
+   procedure that writes only to a `#temp` table (dropped at proc exit) and then
+   `SELECT`s from it satisfies this — nothing persists, so re-running a case can't
+   see a prior case's effect. This distinction is load-bearing here: a naive
+   "contains the word INSERT" screen flags all thirteen `Integration.Get*Updates`,
+   but seven of them only populate a `#temp` result set via cursor + temporal
+   history and change no base table. They are **in**. (See the enumeration note.)
 2. **Single result set.** One `SELECT` shape out, so the golden JSON is one array
-   of rows — comparable value-by-value.
+   of rows — comparable value-by-value. Two output *shapes* occur in the corpus and
+   the capture handles both: the 5 `SearchFor*` end in `FOR JSON` (SQL Server
+   returns one JSON string, chunked across rows at 2033 chars — the capture
+   concatenates then parses); the 9 `Get*Updates` return a tabular row set (the
+   capture wraps it to JSON via `sp_describe_first_result_set` + `INSERT…EXEC`).
+   Either way the golden is one canonical JSON array.
 3. **Deterministic.** No `NEWID()`, `GETDATE()`/`SYSDATETIME()` in the output, no
    dependence on server state. Same inputs → same output, or it cannot have a
    stable golden.
@@ -35,10 +46,13 @@ single-result-set shape:
 - **`Integration`** — `Integration.Get*Updates` (movements, sales, purchases,
   transactions, etc.): parameterized read extracts, single result set.
 
-Between them the source exposes on the order of **17–18** procedures that pass a
-first read-only/single-result-set screen; the full enumeration is produced
-mechanically by `corpus/select.sql` (task 0.2 / Phase 1) and pasted below when it
-runs.
+The full enumeration is produced mechanically by `corpus/select.sql` and pasted
+below. The screen uses SQL Server's own dependency engine
+(`sys.dm_sql_referenced_entities`, `is_updated`) to decide criterion 1 — not a
+substring scan of the body, which cannot tell a `#temp` write from a base-table
+write and misreads aliases. Run against the restored database, it reports **18**
+procedures with **no base-table write** and no non-determinism, and **6** that
+write a base table (excluded). All 24 have ≤ 5 parameters.
 
 ## Target size
 
@@ -52,28 +66,72 @@ runs.
 
 ## Enumeration + inclusion table
 
-*(Filled by `corpus/select.sql` in Phase 1. Until then this is the shape.)*
+Produced by `corpus/select.sql` against the restored WWI (2026-08-08). `no base
+write` and `det` are the mechanical screen; `IN`/`hold` is the branch-diversity
+selection on top of it (§Target size). "shape" summarises what makes the row
+distinct.
 
-| Procedure | Schema | Params | Read-only | Single result | Deterministic | Verdict |
-| --- | --- | --- | --- | --- | --- | --- |
-| `Website.SearchForCustomers` | Website | … | ✓ | ✓ | ✓ | *pending run* |
-| … | … | … | … | … | … | … |
+| Procedure | Params | No base write | Det | Shape | Verdict |
+| --- | --- | --- | --- | --- | --- |
+| `Website.SearchForCustomers` | 2 | ✓ | ✓ | relevance search, optional filter | **IN** |
+| `Website.SearchForSuppliers` | 2 | ✓ | ✓ | relevance search | **IN** |
+| `Website.SearchForStockItems` | 2 | ✓ | ✓ | relevance search, smallest body | **IN** |
+| `Website.SearchForStockItemsByTags` | 2 | ✓ | ✓ | tag search — different match path | **IN** |
+| `Website.SearchForPeople` | 2 | ✓ | ✓ | relevance search, permission filter | **IN** |
+| `Integration.GetOrderUpdates` | 2 | ✓ | ✓ | simple join extract | **IN** |
+| `Integration.GetSaleUpdates` | 2 | ✓ | ✓ | join extract, wider projection | **IN** |
+| `Integration.GetPurchaseUpdates` | 2 | ✓ | ✓ | join extract | **IN** |
+| `Integration.GetMovementUpdates` | 2 | ✓ | ✓ | smallest join extract | **IN** |
+| `Integration.GetTransactionUpdates` | 2 | ✓ | ✓ | multi-join extract | **IN** |
+| `Integration.GetStockHoldingUpdates` | 0 | ✓ | ✓ | zero-param extract (edge case) | **IN** |
+| `Integration.GetCityUpdates` | 2 | ✓ | ✓ | cursor + temporal + **geography** | **IN** |
+| `Integration.GetCustomerUpdates` | 2 | ✓ | ✓ | cursor + temporal, richest body | **IN** |
+| `Integration.GetSupplierUpdates` | 2 | ✓ | ✓ | cursor + temporal, 2nd variant | **IN** |
+| `Integration.GetEmployeeUpdates` | 2 | ✓ | ✓ | cursor + temporal | hold |
+| `Integration.GetStockItemUpdates` | 2 | ✓ | ✓ | cursor + temporal | hold |
+| `Integration.GetPaymentMethodUpdates` | 2 | ✓ | ✓ | cursor + temporal | hold |
+| `Integration.GetTransactionTypeUpdates` | 2 | ✓ | ✓ | cursor + temporal | hold |
+
+**Corpus = the 14 marked `IN`.** All 18 pass the mechanical screen; the four
+`hold` are cursor-plus-temporal siblings of `GetCustomerUpdates`/`GetSupplierUpdates`
+and add no new branch shape, so per the size policy they are held back rather than
+padding the count. They stay one line away from inclusion if a run shows the
+complex tier needs more weight.
 
 ## Exclusions (recorded, not hidden)
 
-A procedure that meets the read-only screen but is left out gets a line here, so
-an absence never reads as an oversight:
+The six procedures the mechanical screen rejects — each writes a base table
+(`is_updated = 1`), violating criterion 1:
 
-| Procedure | Why excluded |
-| --- | --- |
-| *(e.g. a proc emitting multiple result sets)* | violates criterion 2 |
-| *(e.g. a proc using `SYSDATETIME()` in output)* | violates criterion 3 |
+| Procedure | Params | Why excluded |
+| --- | --- | --- |
+| `Website.InsertCustomerOrders` | 4 | writes base tables; also non-deterministic output |
+| `Website.InvoiceCustomerOrders` | 3 | writes base tables; also non-deterministic output |
+| `Website.ActivateWebsiteLogon` | 3 | writes a base table (updates logon state) |
+| `Website.ChangePassword` | 3 | writes a base table (updates credential) |
+| `Website.RecordColdRoomTemperatures` | 1 | writes a base table (sensor insert) |
+| `Website.RecordVehicleTemperature` | 1 | writes a base table (sensor insert) |
+
+**Note on the `Get*Updates` write-screen.** A naive "body contains INSERT/UPDATE"
+scan flags all thirteen `Get*Updates` — they populate a `#temp` result table via
+cursor and `UPDATE <alias> ... FROM #temp`. The dependency-engine screen correctly
+reports `writes_base_table = 0` for every one: the writes hit `#temp`, never a base
+table, so criterion 1 admits them. This is exactly the false positive the coarse
+scan would have produced, avoided.
 
 ## Introduced specifics (overrule cheaply)
 
-- **~17–18 candidates** is an estimate from the schema shape, not a counted
-  figure — `select.sql` replaces it with the real count.
+- **18 candidates pass, corpus = 14** — these are counted from `select.sql`, not
+  estimated. The choice to include 14 of the 18 (holding back four look-alike
+  complex `Get*Updates`) is the branch-diversity policy applied; overrule by moving
+  a `hold` row to `IN`.
+- The specific 3 complex procs chosen (`GetCity` for geography, `GetCustomer` and
+  `GetSupplier` as the cursor+temporal representatives) is a judgement call to get
+  one geography branch and two temporal-reconstruction branches without carrying
+  all seven. A reviewer who wants the full complex tier flips the four `hold` rows.
 - The **12–20 band / cap 20** is a sizing choice tied to the S budget, not a
   property of the corpus.
-- Preferring branch-shape coverage over count is a stated selection policy; it is
-  what a reviewer would otherwise suspect us of *not* doing.
+- Criterion 1 was refined during Phase 1 from "no INSERT/UPDATE/DELETE/MERGE" to
+  "no *base-table* write," because the literal reading would have wrongly excluded
+  the entire `Get*Updates` family over their `#temp` scratch tables. The rationale
+  (no state to roll back between cases) is unchanged; the wording now matches it.

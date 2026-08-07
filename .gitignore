@@ -3,6 +3,12 @@
 *.env
 !.env.example
 
+# Downloaded corpus backup — pinned by SHA in restore.sh, never committed (large,
+# upstream-owned). Only the extracted procs/seed/golden are committed. See
+# corpus/SOURCE.md.
+corpus/_bak/
+*.bak
+
 # Python
 __pycache__/
 *.py[cod]
