@@ -9,6 +9,9 @@ __pycache__/
 .venv/
 venv/
 
+# Ukrainian working copies — every *.uk.md is a private translation, never committed
+*.uk.md
+
 # OS / editor
 .DS_Store
 Thumbs.db
