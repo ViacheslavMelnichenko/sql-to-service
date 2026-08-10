@@ -112,19 +112,37 @@ be right before any agent runs.
 
 | # | Task | Target file | Status | Fate |
 |---|------|-------------|--------|------|
-| 2.1 | `analyst` subagent — read-only, writes a spec, no code | `.claude/agents/analyst.md` | todo | becomes-impl |
-| 2.2 | `implementer` subagent — spec → .NET + Mongo | `.claude/agents/implementer.md` | todo | becomes-impl |
-| 2.3 | `test-author` subagent — separate context, writes unit tests | `.claude/agents/test-author.md` | todo | becomes-impl |
-| 2.4 | `reviewer` subagent — checks against skills | `.claude/agents/reviewer.md` | todo | becomes-impl |
-| 2.5 | Skill: T-SQL semantics → service intent | `.claude/skills/tsql-semantics/SKILL.md` | todo | becomes-impl |
-| 2.6 | Skill: `decimal` → `Decimal128` round-trip rules | `.claude/skills/decimal-mapping/SKILL.md` | todo | becomes-impl |
-| 2.7 | Skill: result-set → Mongo document modelling | `.claude/skills/document-modelling/SKILL.md` | todo | becomes-impl |
-| 2.8 | Skill: idiomatic .NET service shape | `.claude/skills/dotnet-service-shape/SKILL.md` | todo | becomes-impl |
-| 2.9 | One showcase conversion end to end (a substantive `SearchFor*`) | `generated/<Showcase>Service.cs` | todo | becomes-impl |
+| 2.1 | `analyst` subagent — read-only, writes a spec, no code | `.claude/agents/analyst.md` | done | becomes-impl |
+| 2.2 | `implementer` subagent — spec → .NET + Mongo | `.claude/agents/implementer.md` | done | becomes-impl |
+| 2.3 | `test-author` subagent — separate context, writes unit tests | `.claude/agents/test-author.md` | done | becomes-impl |
+| 2.4 | `reviewer` subagent — checks against skills | `.claude/agents/reviewer.md` | done | becomes-impl |
+| 2.5 | Skill: T-SQL semantics → service intent | `.claude/skills/tsql-semantics/SKILL.md` | done | becomes-impl |
+| 2.6 | Skill: `decimal` → `Decimal128` round-trip rules | `.claude/skills/decimal-mapping/SKILL.md` | done | becomes-impl |
+| 2.7 | Skill: result-set → Mongo document modelling | `.claude/skills/document-modelling/SKILL.md` | done | becomes-impl |
+| 2.8 | Skill: idiomatic .NET service shape | `.claude/skills/dotnet-service-shape/SKILL.md` | done | becomes-impl |
+| 2.9 | One showcase conversion end to end (a substantive `SearchFor*`) | `generated/SearchForCustomersService.cs` | done | becomes-impl |
+
+> **Phase 2 as built.** The four subagents are real Claude Code agents with
+> separated tool-sets, not renamed prompts: `analyst` is read-only + Write (spec
+> only, no code), `implementer` and `test-author` write under `generated/` in
+> separate contexts (so the tests can't inherit the code's blind spot, per
+> ADR-0001), and `reviewer` has **no** Write/Edit — it reads, loads the skills, and
+> runs the gate. The four skills are versioned `SKILL.md` files grounded in the
+> actual corpus (the FOR JSON AUTO nesting rules, CONCAT null-swallowing,
+> decimal→Decimal128 at scale 4, the idiomatic service shape). The showcase is
+> `Website.SearchForCustomers` — the hardest conversion in the corpus (three-table
+> join, INNER-drops vs LEFT-keeps, CONCAT search, TOP-after-ORDER, and FOR JSON
+> AUTO nesting rebuilt from flat collections). It runs through all four stages by
+> hand: `generated/Website.SearchForCustomers.spec.md` → `SearchForCustomersService.cs`
+> + `Program.cs` → `tests/` → `.review.md`. Both projects build on .NET 10 and
+> **6/6 tests pass**, each asserting the service output equals golden after the
+> gate's own `canonicalise.py` — so the differential is already green on every
+> case. The standalone `gates/*.sh` and the in-loop hooks are Phase 3.
 
 **Phase-2 exit:** the four subagents exist with genuinely separated context and
 tool-sets (not renamed prompts), the skills are versioned files the reviewer
 loads, and one substantive conversion runs through all four stages by hand.
+**Met:** see "Phase 2 as built" above.
 
 ---
 

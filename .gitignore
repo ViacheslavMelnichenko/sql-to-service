@@ -15,6 +15,10 @@ __pycache__/
 .venv/
 venv/
 
+# .NET build output — the generated source is committed, the build is not.
+[Bb]in/
+[Oo]bj/
+
 # Ukrainian working copies — every *.uk.md is a private translation, never committed
 *.uk.md
 
