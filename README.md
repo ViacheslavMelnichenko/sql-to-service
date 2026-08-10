@@ -3,6 +3,10 @@
 **An engineering harness that makes an unreliable AI trustworthy on a real
 migration task.**
 
+> 🖥️ **[Live walkthrough → viacheslavmelnichenko.github.io/sql-to-service](https://viacheslavmelnichenko.github.io/sql-to-service/)** —
+> a guided, step-by-step tour of the whole harness. Each step pairs a command
+> with the output that proves it worked.
+
 The task — converting legacy T-SQL stored procedures into a .NET + MongoDB
 service layer — is the *vehicle*, not the point. Anyone can ask a language model
 to translate code. The interesting problem is the one every team hits the moment
