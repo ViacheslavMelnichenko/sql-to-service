@@ -1,0 +1,531 @@
+{
+  "Application.Cities": [
+    {
+      "CityID": 1,
+      "CityName": "Seattle",
+      "LatestRecordedPopulation": 750000,
+      "Location": "POINT (-122.3321 47.6062)",
+      "StateProvinceID": 1
+    },
+    {
+      "CityID": 2,
+      "CityName": "Portland",
+      "LatestRecordedPopulation": null,
+      "Location": null,
+      "StateProvinceID": null
+    },
+    {
+      "CityID": 3,
+      "CityName": "Boston",
+      "LatestRecordedPopulation": null,
+      "Location": null,
+      "StateProvinceID": null
+    }
+  ],
+  "Application.Cities_Archive": [
+    {
+      "CityID": 1,
+      "CityName": "Seattle",
+      "LatestRecordedPopulation": 650000,
+      "Location": "POINT (-122.3321 47.6062)",
+      "StateProvinceID": 1,
+      "ValidFrom": "2013-01-01T00:00:00",
+      "ValidTo": "2021-02-01T00:00:00"
+    }
+  ],
+  "Application.Countries": [
+    {
+      "Continent": "North America",
+      "CountryID": 1,
+      "CountryName": "United States",
+      "Region": "Americas",
+      "Subregion": "Northern America"
+    }
+  ],
+  "Application.Countries_Archive": [
+    {
+      "Continent": "North America",
+      "CountryID": 1,
+      "CountryName": "United States of America",
+      "Region": "Americas",
+      "Subregion": "Northern America",
+      "ValidFrom": "2013-01-01T00:00:00",
+      "ValidTo": "2020-05-01T00:00:00"
+    }
+  ],
+  "Application.People": [
+    {
+      "FullName": "Amy Salesperson",
+      "IsEmployee": true,
+      "IsSalesperson": true,
+      "PersonID": 1,
+      "PreferredName": "Amy",
+      "SearchName": "Amy Salesperson"
+    },
+    {
+      "FullName": "Ben Employee",
+      "IsEmployee": true,
+      "IsSalesperson": false,
+      "PersonID": 2,
+      "PreferredName": "Ben",
+      "SearchName": "Ben Employee"
+    },
+    {
+      "FullName": "Cara Customer",
+      "IsEmployee": false,
+      "IsSalesperson": false,
+      "PersonID": 3,
+      "PreferredName": "Cara",
+      "SearchName": "Cara Customer"
+    },
+    {
+      "FullName": "Dan Supplier",
+      "IsEmployee": false,
+      "IsSalesperson": false,
+      "PersonID": 4,
+      "PreferredName": "Dan",
+      "SearchName": "Dan Supplier"
+    },
+    {
+      "FullName": "Eve Alternate",
+      "IsEmployee": false,
+      "IsSalesperson": false,
+      "PersonID": 5,
+      "PreferredName": "Eve",
+      "SearchName": "Eve Alternate"
+    },
+    {
+      "FullName": "Fay Unlinked",
+      "IsEmployee": false,
+      "IsSalesperson": false,
+      "PersonID": 6,
+      "PreferredName": "Fay",
+      "SearchName": "Fay Unlinked"
+    }
+  ],
+  "Application.People_Archive": [],
+  "Application.StateProvinces": [
+    {
+      "CountryID": 1,
+      "SalesTerritory": "Plains",
+      "StateProvinceID": 1,
+      "StateProvinceName": "Washington"
+    }
+  ],
+  "Application.StateProvinces_Archive": [
+    {
+      "CountryID": 1,
+      "SalesTerritory": "Plains",
+      "StateProvinceID": 1,
+      "StateProvinceName": "Washington Terr.",
+      "ValidFrom": "2013-01-01T00:00:00",
+      "ValidTo": "2020-08-01T00:00:00"
+    }
+  ],
+  "Purchasing.PurchaseOrderLines": [
+    {
+      "IsOrderLineFinalized": true,
+      "LastEditedWhen": "2020-01-20T09:00:00",
+      "OrderedOuters": 5,
+      "PackageTypeID": 2,
+      "PurchaseOrderID": 1,
+      "PurchaseOrderLineID": 1,
+      "ReceivedOuters": 5,
+      "StockItemID": 1
+    },
+    {
+      "IsOrderLineFinalized": false,
+      "LastEditedWhen": "2020-02-20T09:00:00",
+      "OrderedOuters": 3,
+      "PackageTypeID": 1,
+      "PurchaseOrderID": 2,
+      "PurchaseOrderLineID": 2,
+      "ReceivedOuters": 0,
+      "StockItemID": 2
+    }
+  ],
+  "Purchasing.PurchaseOrders": [
+    {
+      "LastEditedWhen": "2020-01-20T09:00:00",
+      "OrderDate": "2020-01-05",
+      "PurchaseOrderID": 1,
+      "SupplierID": 1
+    },
+    {
+      "LastEditedWhen": "2020-02-20T09:00:00",
+      "OrderDate": "2020-02-05",
+      "PurchaseOrderID": 2,
+      "SupplierID": 2
+    }
+  ],
+  "Purchasing.SupplierCategories": [
+    {
+      "SupplierCategoryID": 1,
+      "SupplierCategoryName": "Parts"
+    }
+  ],
+  "Purchasing.SupplierCategories_Archive": [
+    {
+      "SupplierCategoryID": 1,
+      "SupplierCategoryName": "Parts (old)",
+      "ValidFrom": "2013-01-01T00:00:00",
+      "ValidTo": "2020-07-01T00:00:00"
+    }
+  ],
+  "Purchasing.SupplierTransactions": [
+    {
+      "AmountExcludingTax": 500.0,
+      "IsFinalized": true,
+      "LastEditedWhen": "2020-01-20T09:00:00",
+      "OutstandingBalance": 0.0,
+      "PaymentMethodID": null,
+      "PurchaseOrderID": 1,
+      "SupplierID": 1,
+      "SupplierInvoiceNumber": "SI-001",
+      "SupplierTransactionID": 1,
+      "TaxAmount": 50.0,
+      "TransactionAmount": 550.0,
+      "TransactionDate": "2020-01-08",
+      "TransactionTypeID": 5
+    }
+  ],
+  "Purchasing.Suppliers": [
+    {
+      "AlternateContactPersonID": 5,
+      "DeliveryCityID": 3,
+      "DeliveryPostalCode": "30301",
+      "FaxNumber": "555-0301",
+      "PaymentDays": 30,
+      "PhoneNumber": "555-0300",
+      "PrimaryContactPersonID": 4,
+      "SupplierCategoryID": 1,
+      "SupplierID": 1,
+      "SupplierName": "Litware Supplies",
+      "SupplierReference": "SUP-001"
+    },
+    {
+      "AlternateContactPersonID": null,
+      "DeliveryCityID": 1,
+      "DeliveryPostalCode": null,
+      "FaxNumber": "555-0401",
+      "PaymentDays": null,
+      "PhoneNumber": "555-0400",
+      "PrimaryContactPersonID": null,
+      "SupplierCategoryID": null,
+      "SupplierID": 2,
+      "SupplierName": "Contoso Parts",
+      "SupplierReference": null
+    }
+  ],
+  "Purchasing.Suppliers_Archive": [
+    {
+      "AlternateContactPersonID": 5,
+      "DeliveryCityID": 3,
+      "DeliveryPostalCode": "30300",
+      "FaxNumber": "555-0301",
+      "PaymentDays": 30,
+      "PhoneNumber": "555-0300",
+      "PrimaryContactPersonID": 4,
+      "SupplierCategoryID": 1,
+      "SupplierID": 1,
+      "SupplierName": "Litware Supplies",
+      "SupplierReference": "SUP-001",
+      "ValidFrom": "2013-01-01T00:00:00",
+      "ValidTo": "2021-03-01T00:00:00"
+    }
+  ],
+  "Sales.BuyingGroups": [
+    {
+      "BuyingGroupID": 1,
+      "BuyingGroupName": "Buying Group A"
+    }
+  ],
+  "Sales.BuyingGroups_Archive": [
+    {
+      "BuyingGroupID": 1,
+      "BuyingGroupName": "Buying Group A (old)",
+      "ValidFrom": "2013-01-01T00:00:00",
+      "ValidTo": "2020-06-01T00:00:00"
+    }
+  ],
+  "Sales.CustomerCategories": [
+    {
+      "CustomerCategoryID": 1,
+      "CustomerCategoryName": "Wholesale"
+    }
+  ],
+  "Sales.CustomerCategories_Archive": [
+    {
+      "CustomerCategoryID": 1,
+      "CustomerCategoryName": "Wholesaler (old)",
+      "ValidFrom": "2013-01-01T00:00:00",
+      "ValidTo": "2020-09-01T00:00:00"
+    }
+  ],
+  "Sales.CustomerTransactions": [
+    {
+      "AmountExcludingTax": 250.0,
+      "CustomerID": 1,
+      "CustomerTransactionID": 1,
+      "InvoiceID": 1,
+      "IsFinalized": true,
+      "LastEditedWhen": "2020-01-20T09:00:00",
+      "OutstandingBalance": 0.0,
+      "PaymentMethodID": null,
+      "TaxAmount": 37.5,
+      "TransactionAmount": 287.5,
+      "TransactionDate": "2020-01-05",
+      "TransactionTypeID": 1
+    },
+    {
+      "AmountExcludingTax": 100.0,
+      "CustomerID": 2,
+      "CustomerTransactionID": 2,
+      "InvoiceID": null,
+      "IsFinalized": false,
+      "LastEditedWhen": "2020-02-20T09:00:00",
+      "OutstandingBalance": 110.0,
+      "PaymentMethodID": 4,
+      "TaxAmount": 10.0,
+      "TransactionAmount": 110.0,
+      "TransactionDate": "2020-02-05",
+      "TransactionTypeID": 1
+    }
+  ],
+  "Sales.Customers": [
+    {
+      "BillToCustomerID": 1,
+      "BuyingGroupID": 1,
+      "CustomerCategoryID": 1,
+      "CustomerID": 1,
+      "CustomerName": "Tailspin Toys (Head)",
+      "DeliveryCityID": 1,
+      "DeliveryPostalCode": "98001",
+      "FaxNumber": "555-0101",
+      "PhoneNumber": "555-0100",
+      "PrimaryContactPersonID": 3
+    },
+    {
+      "BillToCustomerID": 1,
+      "BuyingGroupID": null,
+      "CustomerCategoryID": null,
+      "CustomerID": 2,
+      "CustomerName": "Wingtip Toys",
+      "DeliveryCityID": 2,
+      "DeliveryPostalCode": null,
+      "FaxNumber": "555-0201",
+      "PhoneNumber": "555-0200",
+      "PrimaryContactPersonID": null
+    }
+  ],
+  "Sales.Customers_Archive": [
+    {
+      "BillToCustomerID": 1,
+      "BuyingGroupID": 1,
+      "CustomerCategoryID": 1,
+      "CustomerID": 1,
+      "CustomerName": "Tailspin Toys (Head)",
+      "DeliveryCityID": 1,
+      "DeliveryPostalCode": "98000",
+      "FaxNumber": "555-0101",
+      "PhoneNumber": "555-0100",
+      "PrimaryContactPersonID": 3,
+      "ValidFrom": "2013-01-01T00:00:00",
+      "ValidTo": "2021-01-01T00:00:00"
+    }
+  ],
+  "Sales.InvoiceLines": [
+    {
+      "Description": "USB rocket launcher",
+      "ExtendedPrice": 287.5,
+      "InvoiceID": 1,
+      "InvoiceLineID": 1,
+      "LastEditedWhen": "2020-01-20T09:00:00",
+      "LineProfit": 50.0,
+      "PackageTypeID": 1,
+      "Quantity": 10,
+      "StockItemID": 1,
+      "TaxAmount": 37.5,
+      "TaxRate": 15.0,
+      "UnitPrice": 25.0
+    },
+    {
+      "Description": "Chocolate frogs 250g",
+      "ExtendedPrice": 33.0,
+      "InvoiceID": 2,
+      "InvoiceLineID": 2,
+      "LastEditedWhen": "2020-02-20T09:00:00",
+      "LineProfit": 12.0,
+      "PackageTypeID": 2,
+      "Quantity": 6,
+      "StockItemID": 3,
+      "TaxAmount": 3.0,
+      "TaxRate": 10.0,
+      "UnitPrice": 5.0
+    }
+  ],
+  "Sales.Invoices": [
+    {
+      "BillToCustomerID": 1,
+      "ConfirmedDeliveryTime": "2020-01-07T15:00:00",
+      "CustomerID": 1,
+      "InvoiceDate": "2020-01-05",
+      "InvoiceID": 1,
+      "LastEditedWhen": "2020-01-20T09:00:00",
+      "SalespersonPersonID": 1
+    },
+    {
+      "BillToCustomerID": 1,
+      "ConfirmedDeliveryTime": null,
+      "CustomerID": 2,
+      "InvoiceDate": "2020-02-05",
+      "InvoiceID": 2,
+      "LastEditedWhen": "2020-02-20T09:00:00",
+      "SalespersonPersonID": 1
+    }
+  ],
+  "Sales.OrderLines": [
+    {
+      "Description": "USB rocket launcher",
+      "LastEditedWhen": "2020-01-20T09:00:00",
+      "OrderID": 1,
+      "OrderLineID": 1,
+      "PackageTypeID": 1,
+      "PickingCompletedWhen": "2020-01-06T12:00:00",
+      "Quantity": 10,
+      "StockItemID": 1,
+      "TaxRate": 15.0,
+      "UnitPrice": 25.0
+    },
+    {
+      "Description": "USB missile launcher",
+      "LastEditedWhen": "2020-02-10T09:00:00",
+      "OrderID": 2,
+      "OrderLineID": 2,
+      "PackageTypeID": 2,
+      "PickingCompletedWhen": null,
+      "Quantity": 3,
+      "StockItemID": 2,
+      "TaxRate": 10.0,
+      "UnitPrice": 100.0
+    }
+  ],
+  "Sales.Orders": [
+    {
+      "BackorderOrderID": null,
+      "CustomerID": 1,
+      "LastEditedWhen": "2020-01-10T09:00:00",
+      "OrderDate": "2020-01-05",
+      "OrderID": 1,
+      "PickedByPersonID": 1,
+      "SalespersonPersonID": 1
+    },
+    {
+      "BackorderOrderID": 1,
+      "CustomerID": 2,
+      "LastEditedWhen": "2020-02-20T09:00:00",
+      "OrderDate": "2020-02-05",
+      "OrderID": 2,
+      "PickedByPersonID": null,
+      "SalespersonPersonID": 1
+    }
+  ],
+  "Warehouse.PackageTypes": [
+    {
+      "PackageTypeID": 1,
+      "PackageTypeName": "Each"
+    },
+    {
+      "PackageTypeID": 2,
+      "PackageTypeName": "Carton"
+    }
+  ],
+  "Warehouse.StockItemHoldings": [
+    {
+      "BinLocation": "L-1",
+      "LastCostPrice": 12.5,
+      "LastStocktakeQuantity": 95,
+      "QuantityOnHand": 100,
+      "ReorderLevel": 20,
+      "StockItemID": 1,
+      "TargetStockLevel": 200
+    },
+    {
+      "BinLocation": "L-2",
+      "LastCostPrice": 8.0,
+      "LastStocktakeQuantity": 50,
+      "QuantityOnHand": 50,
+      "ReorderLevel": 10,
+      "StockItemID": 2,
+      "TargetStockLevel": 100
+    }
+  ],
+  "Warehouse.StockItemTransactions": [
+    {
+      "CustomerID": 1,
+      "InvoiceID": 1,
+      "LastEditedWhen": "2020-01-20T09:00:00",
+      "PurchaseOrderID": null,
+      "Quantity": -10.0,
+      "StockItemID": 1,
+      "StockItemTransactionID": 1,
+      "SupplierID": null,
+      "TransactionOccurredWhen": "2020-01-10T12:00:00",
+      "TransactionTypeID": 10
+    },
+    {
+      "CustomerID": null,
+      "InvoiceID": null,
+      "LastEditedWhen": "2020-02-20T09:00:00",
+      "PurchaseOrderID": 1,
+      "Quantity": 50.0,
+      "StockItemID": 1,
+      "StockItemTransactionID": 2,
+      "SupplierID": 1,
+      "TransactionOccurredWhen": "2020-02-10T12:00:00",
+      "TransactionTypeID": 11
+    }
+  ],
+  "Warehouse.StockItems": [
+    {
+      "IsChillerStock": false,
+      "QuantityPerOuter": 10,
+      "SearchDetails": "USB rocket launcher gadget",
+      "StockItemID": 1,
+      "StockItemName": "USB rocket launcher",
+      "Tags": "[\"Gadget\"]"
+    },
+    {
+      "IsChillerStock": false,
+      "QuantityPerOuter": 12,
+      "SearchDetails": "USB missile launcher gadget",
+      "StockItemID": 2,
+      "StockItemName": "USB missile launcher",
+      "Tags": "[\"Gadget\"]"
+    },
+    {
+      "IsChillerStock": true,
+      "QuantityPerOuter": 6,
+      "SearchDetails": "Chocolate frogs 250g",
+      "StockItemID": 3,
+      "StockItemName": "Chocolate frogs 250g",
+      "Tags": "[\"Chocolate\"]"
+    },
+    {
+      "IsChillerStock": false,
+      "QuantityPerOuter": 25,
+      "SearchDetails": "Plain cardboard box",
+      "StockItemID": 4,
+      "StockItemName": "Plain cardboard box",
+      "Tags": null
+    },
+    {
+      "IsChillerStock": false,
+      "QuantityPerOuter": 8,
+      "SearchDetails": "USB food warmer novelty",
+      "StockItemID": 5,
+      "StockItemName": "USB food warmer",
+      "Tags": "[\"Gadget\",\"Novelty\"]"
+    }
+  ]
+}

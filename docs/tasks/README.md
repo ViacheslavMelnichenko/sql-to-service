@@ -150,15 +150,15 @@ loads, and one substantive conversion runs through all four stages by hand.
 
 | # | Task | Target file | Status | Fate |
 |---|------|-------------|--------|------|
-| 3.1 | Gate tool: build the generated service | `gates/build.sh` | todo | becomes-impl |
-| 3.2 | Gate tool: run agent-written unit tests | `gates/unit.sh` | todo | becomes-impl |
-| 3.3 | Gate tool: differential vs golden (value-based compare) | `gates/differential.sh` | todo | becomes-impl |
-| 3.4 | Gate tool: `verify.sh` = build+unit+diff, no model calls | `gates/verify.sh` | todo | becomes-impl |
-| 3.5 | Hook `PostToolUse` → build after every write to `generated/` | `.claude/settings.json` | todo | becomes-impl |
-| 3.6 | Hook `Stop` → differential must pass before agent may finish | `.claude/settings.json` | todo | becomes-impl |
-| 3.7 | Hook `PreToolUse` → block writes outside allowed folders | `.claude/settings.json` | todo | becomes-impl |
-| 3.8 | Retry feedback: gate failure fed back to agent (cap 2) | `pipeline/retry.md` | todo | becomes-impl |
-| 3.9 | **Gate-validation via mutation (MANDATORY)**: inject known bugs, prove the gate catches every one | `gates/mutation-check.sh` | todo | becomes-impl |
+| 3.1 | Gate tool: build the generated service | `gates/build.sh` | done | becomes-impl |
+| 3.2 | Gate tool: run agent-written unit tests | `gates/unit.sh` | done | becomes-impl |
+| 3.3 | Gate tool: differential vs golden (value-based compare) | `gates/differential.sh` | done | becomes-impl |
+| 3.4 | Gate tool: `verify.sh` = build+unit+diff, no model calls | `gates/verify.sh` | done | becomes-impl |
+| 3.5 | Hook `PostToolUse` → build after every write to `generated/` | `.claude/settings.json` | done | becomes-impl |
+| 3.6 | Hook `Stop` → differential must pass before agent may finish | `.claude/settings.json` | done | becomes-impl |
+| 3.7 | Hook `PreToolUse` → block writes outside allowed folders | `.claude/settings.json` | done | becomes-impl |
+| 3.8 | Retry feedback: gate failure fed back to agent (cap 2) | `pipeline/retry.md` | done | becomes-impl |
+| 3.9 | **Gate-validation via mutation (MANDATORY)**: inject known bugs, prove the gate catches every one | `gates/mutation-check.sh` | done | becomes-impl |
 
 > **3.9 is not optional and is not a stretch item.** A differential gate that has
 > never been shown to fail on a wrong conversion is an untested gate — its green
@@ -167,10 +167,49 @@ loads, and one substantive conversion runs through all four stages by hand.
 > is a dataset hole (see §0.3) that must be closed before Phase 3 exits. This is
 > the artifact that turns "we have tests" into "we proved the tests have teeth."
 
+> **Phase 3 as built.** Four gate scripts, three hooks, one retry doc, one
+> mutation check.
+>
+> *The gates* (`gates/*.sh`) are plain POSIX-sh, callable by hook, human or CI with
+> no model in the loop (ADR-0005). `build.sh` compiles only `generated/` in Release
+> and tolerates the NuGet NU1902/NU1903 advisories (they are not compile errors);
+> `unit.sh` runs the agent-written xunit tests against their own isolated DB;
+> `differential.sh` is load-bearing — it seeds Mongo, builds **once**, then runs the
+> compiled binary so stdout is clean JSON, and compares each case to golden through
+> the gate's own `canonicalise.py` (`--ordered`, since the proc has an `ORDER BY`).
+> `verify.sh` chains build→unit→diff fail-fast. On the showcase: build PASS, **6/6
+> unit, 5/5 differential**, zero model calls.
+>
+> *The hooks* (`.claude/settings.json`, thin scripts under `.claude/hooks/`) wire
+> the gates into the agent loop via the exit-2 feedback convention: `PostToolUse`
+> builds after any `.cs`/`.csproj` write under `generated/` and hands a compile
+> break straight back; `Stop` blocks the agent from finishing while the differential
+> is red; `PreToolUse` (`guard-path`) fails **closed** — it allows writes only under
+> `generated/` (plus the OS temp dir) and refuses everything else, so a green gate
+> can never mean "the agent edited the oracle to match its output" (ADR-0001/0004).
+> Paths resolve via `$CLAUDE_PROJECT_DIR`; all three were pipe-tested against
+> synthetic tool-call payloads (allow `generated/`, block `corpus/`, pass through
+> non-write tools).
+>
+> *The retry protocol* (`pipeline/retry.md`) splits the error path in two: the hooks
+> are the in-loop half (fast, memoryless corrections), and the **cap of 2** lives in
+> the Phase-4 harness, not the hooks — the cap is what makes "never lies" also
+> "always terminates," and it records a capped-out proc as an honest failure rather
+> than retrying until the number looks good.
+>
+> *The teeth* are proven, not asserted: `gates/mutation-check.sh` injects five
+> single-line bugs into the showcase service (drop-where, break-order,
+> shift-pagination, drop-join, type-coercion) and requires the differential to turn
+> red on **every** one. All 5 caught. The one honest scope note: the ADR-0006
+> `decimal(18,4)→float` mutant has no target in this proc (it returns no decimal
+> column), so `type-coercion` stands in for the wrong-numeric-representation class;
+> true precision-loss is exercised when a money-returning proc is converted. Stated
+> in the script header, not skipped silently.
+
 **Phase-3 exit:** every transition is gated automatically in-loop, the
 differential has teeth (**proven** by the mandatory mutation check catching every
 injected bug — a single uncaught mutant blocks exit), and `verify.sh` reproduces a
-verdict with no model calls.
+verdict with no model calls. **Met:** see "Phase 3 as built" above.
 
 ---
 
