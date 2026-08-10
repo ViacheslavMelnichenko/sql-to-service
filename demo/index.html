@@ -3,28 +3,39 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="dark light" />
 <title>sql-to-service — a guided walkthrough</title>
 <style>
-  /* ---- claude.ai-flavoured palette: warm ivory, clay accent, ink text ---- */
+  /* ---- claude.ai-flavoured palette: warm charcoal, clay accent, light ink ----
+     Dark is the DEFAULT theme. A viewer whose OS explicitly prefers light gets
+     the original warm-ivory palette back via the prefers-color-scheme block at
+     the end of this <style>. Everything keys off these variables, so the two
+     themes are just two variable sets — no per-rule light/dark branching. ---- */
   :root {
-    --paper:   #faf9f5;
-    --paper-2: #f2f0e9;
-    --card:    #ffffff;
-    --ink:     #1f1e1d;
-    --ink-2:   #55524c;
-    --ink-3:   #86817a;
-    --clay:    #cc785c;
-    --clay-d:  #b4593d;
-    --line:    #e7e3d9;
-    --good:    #4f7a52;
-    --good-bg: #eef4ee;
-    --warn:    #9a6a1c;
-    --warn-bg: #f7efdd;
-    --code-bg: #1f1e1d;
+    --paper:   #1f1e1d;   /* main background — warm near-black */
+    --paper-2: #292826;   /* sidebar + inset chips */
+    --card:    #2d2b28;   /* cards, a touch raised */
+    --ink:     #f0ede4;   /* primary text */
+    --ink-2:   #c4bfb4;   /* secondary text */
+    --ink-3:   #8f8a80;   /* muted text */
+    --clay:    #cc785c;   /* accent — reads on dark unchanged */
+    --clay-d:  #e0a58f;   /* accent-as-text: lighter clay for contrast on dark */
+    --line:    #3a3833;   /* hairlines / borders */
+    --good:    #7fb183;
+    --good-bg: #222c22;
+    --warn:    #ca9a4e;
+    --warn-bg: #33291a;
+    --warn-fg: #e8c98a;   /* warn body text */
+    --code-bg: #141312;   /* code blocks sit below the page surface */
     --code-fg: #f0ede4;
     --code-dim:#a7a299;
+    --hover:   #33322e;   /* nav row hover */
+    --pill-do: #3a2c26;   /* "Do" pill background — dark clay tint */
+    --tint:    #2b2320;   /* clay-tinted insets: notes, oracle lane, out chips */
+    --clay-line:#4a3b34;  /* border on clay-tinted chips */
+    --foot-grad: linear-gradient(180deg, rgba(31,30,29,0), var(--paper) 40%);
     --radius:  16px;
-    --shadow:  0 1px 2px rgba(31,30,29,.06), 0 8px 30px rgba(31,30,29,.07);
+    --shadow:  0 1px 2px rgba(0,0,0,.30), 0 8px 30px rgba(0,0,0,.35);
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
@@ -62,7 +73,7 @@
     cursor: pointer; transition: background .15s, color .15s;
   }
   nav a .n { color: var(--ink-3); font-size: 12px; width: 20px; flex: none; text-align: right; }
-  nav a:hover { background: #eae7dd; color: var(--ink); }
+  nav a:hover { background: var(--hover); color: var(--ink); }
   nav a.active { background: var(--clay); color: #fff; }
   nav a.active .n { color: rgba(255,255,255,.8); }
 
@@ -85,7 +96,7 @@
   .card.do h3   { color: var(--clay-d); }
   .card.check h3 { color: var(--good); }
   .pill { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
-  .card.do  .pill { background: #f6e7e0; color: var(--clay-d); }
+  .card.do  .pill { background: var(--pill-do); color: var(--clay-d); }
   .card.check .pill { background: var(--good-bg); color: var(--good); }
 
   pre {
@@ -96,11 +107,11 @@
   pre .c { color: var(--code-dim); }      /* comment / prompt */
   pre .k { color: #e0a58f; }               /* clay-ish keyword */
   pre .g { color: #9fd0a3; }               /* green good output */
-  pre b  { color: #fff; font-weight: 600; }
+  pre b  { color: #ffffff; font-weight: 600; }
   p code, li code { background: var(--paper-2); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; font-size: 13px; }
 
-  .note { border-left: 3px solid var(--clay); background: #fbf3ef; border-radius: 0 10px 10px 0; padding: 12px 16px; margin: 16px 0; font-size: 14.5px; color: var(--ink-2); }
-  .warn { border-left: 3px solid var(--warn); background: var(--warn-bg); border-radius: 0 10px 10px 0; padding: 12px 16px; margin: 16px 0; font-size: 14.5px; color: #6b4e14; }
+  .note { border-left: 3px solid var(--clay); background: var(--tint); border-radius: 0 10px 10px 0; padding: 12px 16px; margin: 16px 0; font-size: 14.5px; color: var(--ink-2); }
+  .warn { border-left: 3px solid var(--warn); background: var(--warn-bg); border-radius: 0 10px 10px 0; padding: 12px 16px; margin: 16px 0; font-size: 14.5px; color: var(--warn-fg); }
 
   ul.clean { margin: 6px 0 14px; padding-left: 20px; }
   ul.clean li { margin: 6px 0; }
@@ -114,7 +125,7 @@
 
   /* ---- footer nav ---- */
   .foot { position: fixed; right: 0; bottom: 0; left: 288px; display: flex; align-items: center; justify-content: space-between;
-          padding: 14px 40px; background: linear-gradient(180deg, rgba(250,249,245,0), var(--paper) 40%); }
+          padding: 14px 40px; background: var(--foot-grad); }
   @media (max-width: 900px) { .foot { left: 0; } }
   .btn { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 10px; padding: 9px 16px; font-size: 14px; cursor: pointer; box-shadow: var(--shadow); }
   .btn:hover { border-color: var(--clay); color: var(--clay-d); }
@@ -132,16 +143,47 @@
   .stage .in, .stage .out { font-size: 11.5px; color: var(--ink-3); text-align: center; }
   .stage .in code, .stage .out code { background: var(--paper-2); border: 1px solid var(--line); border-radius: 6px; padding: 1px 5px; font-size: 11px; color: var(--ink-2); }
   .stage .out { color: var(--clay-d); font-weight: 600; }
-  .stage .out code { color: var(--clay-d); border-color: #e6d5cc; background: #fbf3ef; }
+  .stage .out code { color: var(--clay-d); border-color: var(--clay-line); background: var(--tint); }
   .agent { background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 10px 11px; display: flex; flex-direction: column; gap: 5px; min-height: 104px; }
   .agent b:first-child { color: var(--clay-d); font-size: 14px; }
   .agent .tools { font-family: ui-monospace, monospace; font-size: 10px; color: var(--good); background: var(--good-bg); border-radius: 6px; padding: 3px 6px; line-height: 1.4; }
   .agent .constraint { font-size: 11px; color: var(--ink-2); line-height: 1.35; }
-  .oracle-lane { display: grid; grid-template-columns: 1fr 1.4fr; gap: 12px; align-items: center; margin: 12px 0 2px; background: #fbf3ef; border: 1px dashed var(--clay); border-radius: 12px; padding: 11px 14px; }
+  .oracle-lane { display: grid; grid-template-columns: 1fr 1.4fr; gap: 12px; align-items: center; margin: 12px 0 2px; background: var(--tint); border: 1px dashed var(--clay); border-radius: 12px; padding: 11px 14px; }
   .oracle-lane .oracle { font-size: 12.5px; }
   .oracle-lane .oracle b { color: var(--clay-d); font-family: ui-monospace, monospace; font-size: 12px; }
   .oracle-lane .feeds { font-size: 13px; color: var(--ink-2); }
   @media (max-width: 900px) { .flow { grid-template-columns: 1fr 1fr; } .oracle-lane { grid-template-columns: 1fr; } }
+
+  /* ---- light fallback: only when the OS explicitly asks for light ----
+     Dark is the default (the :root above). This restores the original warm-ivory
+     palette for viewers whose system is set to light. Same variables, flipped. */
+  @media (prefers-color-scheme: light) {
+    :root {
+      --paper:   #faf9f5;
+      --paper-2: #f2f0e9;
+      --card:    #ffffff;
+      --ink:     #1f1e1d;
+      --ink-2:   #55524c;
+      --ink-3:   #86817a;
+      --clay:    #cc785c;
+      --clay-d:  #b4593d;
+      --line:    #e7e3d9;
+      --good:    #4f7a52;
+      --good-bg: #eef4ee;
+      --warn:    #9a6a1c;
+      --warn-bg: #f7efdd;
+      --warn-fg: #6b4e14;
+      --code-bg: #1f1e1d;
+      --code-fg: #f0ede4;
+      --code-dim:#a7a299;
+      --hover:   #eae7dd;
+      --pill-do: #f6e7e0;
+      --tint:    #fbf3ef;
+      --clay-line:#e6d5cc;
+      --foot-grad: linear-gradient(180deg, rgba(250,249,245,0), var(--paper) 40%);
+      --shadow:  0 1px 2px rgba(31,30,29,.06), 0 8px 30px rgba(31,30,29,.07);
+    }
+  }
 </style>
 </head>
 <body>
