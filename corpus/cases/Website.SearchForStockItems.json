@@ -1,0 +1,48 @@
+{
+  "proc": "Website.SearchForStockItems",
+  "shape": "for-json",
+  "ordered": true,
+  "notes": "LIKEs si.SearchDetails only. ORDER BY StockItemName. SearchDetails is NOT NULL for every item, so the match is purely on the needle.",
+  "cases": [
+    {
+      "name": "usb-three",
+      "why": "'USB' is in the SearchDetails of items 1,2,5 -> three rows ordered by name (food warmer, missile, rocket).",
+      "params": [
+        {"name": "SearchText", "type": "nvarchar", "value": "USB"},
+        {"name": "MaximumRowsToReturn", "type": "int", "value": 100}
+      ]
+    },
+    {
+      "name": "gadget-detail-match",
+      "why": "'gadget' is in items 1,2 SearchDetails (not item 5) -> two rows. Distinguishes SearchDetails matching from Tags matching (the ...ByTags proc).",
+      "params": [
+        {"name": "SearchText", "type": "nvarchar", "value": "gadget"},
+        {"name": "MaximumRowsToReturn", "type": "int", "value": 100}
+      ]
+    },
+    {
+      "name": "chocolate-one",
+      "why": "'Chocolate' matches only item 3 -> single row.",
+      "params": [
+        {"name": "SearchText", "type": "nvarchar", "value": "Chocolate"},
+        {"name": "MaximumRowsToReturn", "type": "int", "value": 100}
+      ]
+    },
+    {
+      "name": "no-match-empty",
+      "why": "'zzz' matches nothing -> [].",
+      "params": [
+        {"name": "SearchText", "type": "nvarchar", "value": "zzz"},
+        {"name": "MaximumRowsToReturn", "type": "int", "value": 100}
+      ]
+    },
+    {
+      "name": "top-2-pagination",
+      "why": "'USB' matches three but TOP(2) truncates to the first two by name (food warmer, missile). Pagination boundary.",
+      "params": [
+        {"name": "SearchText", "type": "nvarchar", "value": "USB"},
+        {"name": "MaximumRowsToReturn", "type": "int", "value": 2}
+      ]
+    }
+  ]
+}

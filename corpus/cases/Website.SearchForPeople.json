@@ -1,0 +1,56 @@
+{
+  "proc": "Website.SearchForPeople",
+  "shape": "for-json",
+  "ordered": true,
+  "notes": "LIKEs p.SearchName. The CASE ladder classifies each person: Salesperson > Employee > Customer(primary contact) > Supplier(primary) > Supplier(alternate) > NULL. COALESCE company: customer name, else supplier name, else 'WWI'. Seed persons 1..6 map one-to-one onto the six arms.",
+  "cases": [
+    {
+      "name": "all-six-ladder",
+      "why": "Empty needle matches all six people -> every arm of the CASE ladder observed in one result, ordered by FullName (Amy, Ben, Cara, Dan, Eve, Fay). Person 6 (Fay) has NULL Relationship (final CASE falls through) and Company 'WWI' (COALESCE fallback).",
+      "params": [
+        {"name": "SearchText", "type": "nvarchar", "value": ""},
+        {"name": "MaximumRowsToReturn", "type": "int", "value": 100}
+      ]
+    },
+    {
+      "name": "salesperson-arm",
+      "why": "'Amy' -> person 1, IsSalesperson=1 -> Relationship 'Salesperson', company COALESCEs to 'WWI'.",
+      "params": [
+        {"name": "SearchText", "type": "nvarchar", "value": "Amy"},
+        {"name": "MaximumRowsToReturn", "type": "int", "value": 100}
+      ]
+    },
+    {
+      "name": "customer-contact-arm",
+      "why": "'Cara' -> person 3, not sales/employee but is a customer primary contact -> Relationship 'Customer', Company = customer name.",
+      "params": [
+        {"name": "SearchText", "type": "nvarchar", "value": "Cara"},
+        {"name": "MaximumRowsToReturn", "type": "int", "value": 100}
+      ]
+    },
+    {
+      "name": "supplier-alternate-arm",
+      "why": "'Eve' -> person 5, matches only via a supplier's AlternateContactPersonID (the sa arm) -> Relationship 'Supplier', Company = supplier name. The narrowest CASE arm.",
+      "params": [
+        {"name": "SearchText", "type": "nvarchar", "value": "Eve"},
+        {"name": "MaximumRowsToReturn", "type": "int", "value": 100}
+      ]
+    },
+    {
+      "name": "unlinked-null-relationship",
+      "why": "'Fay' -> person 6, no relationship at all -> Relationship NULL (FOR JSON omits the key) and Company 'WWI'. The fall-through arm.",
+      "params": [
+        {"name": "SearchText", "type": "nvarchar", "value": "Fay"},
+        {"name": "MaximumRowsToReturn", "type": "int", "value": 100}
+      ]
+    },
+    {
+      "name": "top-2-pagination",
+      "why": "Empty needle matches six but TOP(2) returns the first two by FullName (Amy, Ben).",
+      "params": [
+        {"name": "SearchText", "type": "nvarchar", "value": ""},
+        {"name": "MaximumRowsToReturn", "type": "int", "value": 2}
+      ]
+    }
+  ]
+}

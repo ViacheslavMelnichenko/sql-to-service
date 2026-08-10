@@ -1,0 +1,48 @@
+{
+  "proc": "Integration.GetMovementUpdates",
+  "shape": "tabular",
+  "ordered": true,
+  "notes": "Simple window on sit.LastEditedWhen: (@LastCutoff, @NewCutoff]. SIT 1 (2020-01-20) is an ISSUE to a customer: InvoiceID+CustomerID set, PO+Supplier NULL, Quantity -10. SIT 2 (2020-02-20) is a RECEIPT from a supplier: PO+Supplier set, Invoice+Customer NULL, Quantity +50. Quantity is CAST to int. ORDER BY StockItemTransactionID.",
+  "cases": [
+    {
+      "name": "jan-issue",
+      "why": "Jan window -> SIT 1: the issue shape (Invoice/Customer set, PO/Supplier null, negative qty).",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2020-01-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2020-02-01T00:00:00"}
+      ]
+    },
+    {
+      "name": "feb-receipt",
+      "why": "Feb window -> SIT 2: the receipt shape (PO/Supplier set, Invoice/Customer null, positive qty).",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2020-02-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2020-03-01T00:00:00"}
+      ]
+    },
+    {
+      "name": "both-months",
+      "why": "Both transactions ordered by StockItemTransactionID -> both null/set projection combos in one result.",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2020-01-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2020-03-01T00:00:00"}
+      ]
+    },
+    {
+      "name": "empty-window",
+      "why": "Window before any edit -> empty.",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2019-01-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2019-02-01T00:00:00"}
+      ]
+    },
+    {
+      "name": "upper-boundary-inclusive",
+      "why": "NewCutoff equals SIT 1's LastEditedWhen -> included (<= bound).",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2020-01-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2020-01-20T09:00:00"}
+      ]
+    }
+  ]
+}

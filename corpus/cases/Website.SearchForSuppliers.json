@@ -1,0 +1,40 @@
+{
+  "proc": "Website.SearchForSuppliers",
+  "shape": "for-json",
+  "ordered": true,
+  "notes": "LIKEs CONCAT(SupplierName,' ',primaryContact.FullName,' ',primaryContact.PreferredName). Only PrimaryContactPersonID joins (supplier 1 -> person 4 Dan). Supplier 2 has NULL contact (null-contact branch).",
+  "cases": [
+    {
+      "name": "supplies-one",
+      "why": "'Supplies' matches only 'Litware Supplies' -> supplier 1.",
+      "params": [
+        {"name": "SearchText", "type": "nvarchar", "value": "Supplies"},
+        {"name": "MaximumRowsToReturn", "type": "int", "value": 100}
+      ]
+    },
+    {
+      "name": "contact-name-match",
+      "why": "'Dan' matches only via supplier 1's primary contact -> proves the contact side of the CONCAT contributes.",
+      "params": [
+        {"name": "SearchText", "type": "nvarchar", "value": "Dan"},
+        {"name": "MaximumRowsToReturn", "type": "int", "value": 100}
+      ]
+    },
+    {
+      "name": "null-contact-name-match",
+      "why": "'Contoso' matches supplier 2, which has NULL contact -> null-contact branch returns because CONCAT ignores NULL.",
+      "params": [
+        {"name": "SearchText", "type": "nvarchar", "value": "Contoso"},
+        {"name": "MaximumRowsToReturn", "type": "int", "value": 100}
+      ]
+    },
+    {
+      "name": "no-match-empty",
+      "why": "No supplier contains 'zzz' -> empty ([]).",
+      "params": [
+        {"name": "SearchText", "type": "nvarchar", "value": "zzz"},
+        {"name": "MaximumRowsToReturn", "type": "int", "value": 100}
+      ]
+    }
+  ]
+}

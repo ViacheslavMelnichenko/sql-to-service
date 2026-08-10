@@ -1,0 +1,40 @@
+{
+  "proc": "Integration.GetTransactionUpdates",
+  "shape": "tabular",
+  "ordered": false,
+  "notes": "UNION ALL of a customer-transactions arm and a supplier-transactions arm, each windowed on LastEditedWhen (@LastCutoff, @NewCutoff]. Customer arm: CT 1 (2020-01-20) has an InvoiceID -> LEFT JOIN Invoices hits -> COALESCE picks i.CustomerID; CT 2 (2020-02-20) has NULL InvoiceID -> COALESCE falls back to ct.CustomerID. Supplier arm: ST 1 (2020-01-20). This proc has NO final ORDER BY, so row order is not guaranteed -- captured with ordered=false (canonicaliser sorts by row value) so the golden is stable across re-captures regardless of plan. It is the one tranche-1 proc where the ORDER BY mutation has nothing to break, by the proc's own design.",
+  "cases": [
+    {
+      "name": "jan-both-arms",
+      "why": "Jan window returns CT 1 (customer arm, COALESCE i-side) AND ST 1 (supplier arm) -> the UNION ALL emits both arms in one result. Supplier arm carries SupplierInvoiceNumber; customer arm has it null.",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2020-01-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2020-02-01T00:00:00"}
+      ]
+    },
+    {
+      "name": "feb-coalesce-fallback",
+      "why": "Feb window returns CT 2 only (customer arm): NULL InvoiceID -> COALESCE(i.CustomerID, ct.CustomerID) falls back to ct.CustomerID. No supplier row in Feb.",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2020-02-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2020-03-01T00:00:00"}
+      ]
+    },
+    {
+      "name": "both-months",
+      "why": "Wide window returns CT 1, CT 2 and ST 1 -> both customer COALESCE branches and the supplier arm together.",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2020-01-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2020-03-01T00:00:00"}
+      ]
+    },
+    {
+      "name": "empty-window",
+      "why": "Window before any edit -> empty (both arms yield nothing).",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2019-01-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2019-02-01T00:00:00"}
+      ]
+    }
+  ]
+}

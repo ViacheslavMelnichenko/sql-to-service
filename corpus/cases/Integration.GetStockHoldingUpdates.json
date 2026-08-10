@@ -1,0 +1,13 @@
+{
+  "proc": "Integration.GetStockHoldingUpdates",
+  "shape": "tabular",
+  "ordered": true,
+  "notes": "Zero-parameter: returns the whole StockItemHoldings table, ORDER BY StockItemID. The only proc with no parameters, so a single case fully covers it. LastCostPrice is decimal(18,2) -> exercises the decimal round-trip on a plain read.",
+  "cases": [
+    {
+      "name": "all-holdings",
+      "why": "No parameters -> the full table, two rows ordered by StockItemID (1 then 2). Covers the zero-arg signature and the decimal projection.",
+      "params": []
+    }
+  ]
+}

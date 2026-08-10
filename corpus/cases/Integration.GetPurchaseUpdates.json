@@ -1,0 +1,48 @@
+{
+  "proc": "Integration.GetPurchaseUpdates",
+  "shape": "tabular",
+  "ordered": true,
+  "notes": "Window on MAX(poline.LastEditedWhen, po.LastEditedWhen): (@LastCutoff, @NewCutoff]. PO 1 effective 2020-01-20 (5 outers x QtyPerOuter 10 = 50, IsOrderLineFinalized=1); PO 2 effective 2020-02-20 (3 x 12 = 36, IsOrderLineFinalized=0). ORDER BY PurchaseOrderID.",
+  "cases": [
+    {
+      "name": "jan-finalized",
+      "why": "Jan window -> PO 1: [Ordered Quantity] = 5*10 = 50, [Is Order Finalized]=1 (the finalized bit arm).",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2020-01-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2020-02-01T00:00:00"}
+      ]
+    },
+    {
+      "name": "feb-not-finalized",
+      "why": "Feb window -> PO 2: [Ordered Quantity] = 3*12 = 36, [Is Order Finalized]=0 (the not-finalized arm).",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2020-02-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2020-03-01T00:00:00"}
+      ]
+    },
+    {
+      "name": "both-months",
+      "why": "Both POs ordered by PurchaseOrderID -> both OrderedOuters*QuantityPerOuter products and both bit arms.",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2020-01-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2020-03-01T00:00:00"}
+      ]
+    },
+    {
+      "name": "empty-window",
+      "why": "Window before any edit -> empty.",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2019-01-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2019-02-01T00:00:00"}
+      ]
+    },
+    {
+      "name": "lower-boundary-exclusive",
+      "why": "LastCutoff equals PO 1's effective timestamp -> PO 1 excluded (> bound), PO 2 remains.",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2020-01-20T09:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2020-03-01T00:00:00"}
+      ]
+    }
+  ]
+}

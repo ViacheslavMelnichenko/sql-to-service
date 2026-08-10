@@ -1,0 +1,48 @@
+{
+  "proc": "Integration.GetSaleUpdates",
+  "shape": "tabular",
+  "ordered": true,
+  "notes": "Window on MAX(invoiceline.LastEditedWhen, invoice.LastEditedWhen): (@LastCutoff, @NewCutoff]. Invoice 1 effective 2020-01-20 (dry item, IsChiller=0, ConfirmedDeliveryTime set); invoice 2 effective 2020-02-20 (chiller item, ConfirmedDeliveryTime NULL -> CAST(NULL AS date) delivery-key branch). ORDER BY InvoiceID, InvoiceLineID.",
+  "cases": [
+    {
+      "name": "jan-dry-item",
+      "why": "Jan window -> invoice 1: [Total Dry Items]=Quantity, [Total Chiller Items]=0 (the IsChiller=0 arms). Delivery Date Key is a real date.",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2020-01-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2020-02-01T00:00:00"}
+      ]
+    },
+    {
+      "name": "feb-chiller-item",
+      "why": "Feb window -> invoice 2: [Total Chiller Items]=Quantity, [Total Dry Items]=0 (the IsChiller<>0 arms). ConfirmedDeliveryTime NULL -> Delivery Date Key is null.",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2020-02-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2020-03-01T00:00:00"}
+      ]
+    },
+    {
+      "name": "both-months",
+      "why": "Both invoices ordered by InvoiceID -> both chiller/dry arms and the Total Excluding Tax = ExtendedPrice - TaxAmount arithmetic (250.00 and 30.00).",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2020-01-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2020-03-01T00:00:00"}
+      ]
+    },
+    {
+      "name": "empty-window",
+      "why": "Window before any edit -> empty.",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2019-01-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2019-02-01T00:00:00"}
+      ]
+    },
+    {
+      "name": "upper-boundary-inclusive",
+      "why": "NewCutoff equals invoice 1's effective timestamp -> included (<= bound).",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2020-01-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2020-01-20T09:00:00"}
+      ]
+    }
+  ]
+}

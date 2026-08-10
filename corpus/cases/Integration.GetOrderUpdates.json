@@ -1,0 +1,56 @@
+{
+  "proc": "Integration.GetOrderUpdates",
+  "shape": "tabular",
+  "ordered": true,
+  "notes": "Window filter is on MAX(orderline.LastEditedWhen, order.LastEditedWhen): (@LastCutoff, @NewCutoff]. Order 1's effective timestamp is 2020-01-20 (line wins); order 2's is 2020-02-20 (order wins). ORDER BY OrderID.",
+  "cases": [
+    {
+      "name": "jan-window",
+      "why": "Jan window returns order 1 only, and its effective timestamp is the ORDER-LINE's (line-wins arm of the CASE).",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2020-01-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2020-02-01T00:00:00"}
+      ]
+    },
+    {
+      "name": "feb-window",
+      "why": "Feb window returns order 2 only; its effective timestamp is the ORDER's (order-wins arm). Order 2 also has BackorderOrderID set and NULL PickingCompletedWhen (the CAST(NULL AS date) picked-key branch).",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2020-02-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2020-03-01T00:00:00"}
+      ]
+    },
+    {
+      "name": "both-months",
+      "why": "Wide window returns both orders, ordered by OrderID -> proves ordering and both ROUND arithmetics (250.00/37.50/287.50 and 300.00/30.00/330.00).",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2020-01-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2020-03-01T00:00:00"}
+      ]
+    },
+    {
+      "name": "empty-window",
+      "why": "A window before any edit returns nothing -> empty result.",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2019-01-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2019-02-01T00:00:00"}
+      ]
+    },
+    {
+      "name": "upper-boundary-inclusive",
+      "why": "NewCutoff exactly equals order 1's effective timestamp (2020-01-20 09:00:00). The upper bound is <=, so order 1 is INCLUDED. Guards the boundary against a > / >= swap.",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2020-01-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2020-01-20T09:00:00"}
+      ]
+    },
+    {
+      "name": "lower-boundary-exclusive",
+      "why": "LastCutoff exactly equals order 1's effective timestamp. The lower bound is >, so order 1 is EXCLUDED and only order 2 remains. Guards the boundary against a < / <= swap.",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2020-01-20T09:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2020-03-01T00:00:00"}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "proc": "Website.SearchForCustomers",
+  "shape": "for-json",
+  "ordered": true,
+  "notes": "SearchText LIKEs CONCAT(CustomerName,' ',contact.FullName,' ',contact.PreferredName). Customer 1 has contact person 3 (Cara); customer 2 has NULL contact — CONCAT ignores the NULL so it still matches on name (the null-contact branch).",
+  "cases": [
+    {
+      "name": "toys-both",
+      "why": "'Toys' is in both customer names -> both rows, ordered by CustomerName (Tailspin, Wingtip).",
+      "params": [
+        {"name": "SearchText", "type": "nvarchar", "value": "Toys"},
+        {"name": "MaximumRowsToReturn", "type": "int", "value": 100}
+      ]
+    },
+    {
+      "name": "contact-name-match",
+      "why": "'Cara' matches only via the LEFT JOIN contact's name -> customer 1 only. Proves the contact side of the CONCAT contributes.",
+      "params": [
+        {"name": "SearchText", "type": "nvarchar", "value": "Cara"},
+        {"name": "MaximumRowsToReturn", "type": "int", "value": 100}
+      ]
+    },
+    {
+      "name": "null-contact-name-match",
+      "why": "'Wingtip' matches customer 2, which has a NULL contact -> the null-contact branch still returns because CONCAT ignores NULL.",
+      "params": [
+        {"name": "SearchText", "type": "nvarchar", "value": "Wingtip"},
+        {"name": "MaximumRowsToReturn", "type": "int", "value": 100}
+      ]
+    },
+    {
+      "name": "no-match-empty",
+      "why": "No row contains 'zzz' -> empty result (FOR JSON emits nothing; golden is []).",
+      "params": [
+        {"name": "SearchText", "type": "nvarchar", "value": "zzz"},
+        {"name": "MaximumRowsToReturn", "type": "int", "value": 100}
+      ]
+    },
+    {
+      "name": "top-1-pagination",
+      "why": "'Toys' matches both but TOP(1) returns only the first by CustomerName (Tailspin). Pagination boundary.",
+      "params": [
+        {"name": "SearchText", "type": "nvarchar", "value": "Toys"},
+        {"name": "MaximumRowsToReturn", "type": "int", "value": 1}
+      ]
+    }
+  ]
+}

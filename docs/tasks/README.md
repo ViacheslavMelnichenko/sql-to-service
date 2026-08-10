@@ -54,7 +54,7 @@ Each task also carries a **fate** — what happens to it after the build:
 | # | Task | Target file | Status | Fate |
 |---|------|-------------|--------|------|
 | 0.1 | Pick corpus source + pin (URL + SHA) | `corpus/SOURCE.md` | done | permanent |
-| 0.2 | Selection criterion + full candidate list + exclusions | `corpus/SELECTION.md` | wip | permanent |
+| 0.2 | Selection criterion + full candidate list + exclusions | `corpus/SELECTION.md` | done | permanent |
 | 0.3 | Dataset-sizing decision (branch-coverage, not volume) | `docs/adr/0002-dataset-sizing.md` | done | permanent |
 | 0.4 | ADR-0001 non-circular gate (golden before model) | `docs/adr/0001-non-circular-gate.md` | done | permanent |
 | 0.5 | ADR-0003 mechanical Mongo seed (pure fn of relational seed) | `docs/adr/0003-mechanical-mongo-seed.md` | done | permanent |
@@ -64,9 +64,11 @@ Each task also carries a **fate** — what happens to it after the build:
 | 0.9 | Architecture doc (the 3 README diagrams, expanded) | `docs/architecture.md` | done | permanent |
 | 0.10 | Pre-registration: hypotheses + thresholds before run-001 | `evals/PREREGISTRATION.md` | done | permanent |
 
-> **0.2 is `wip`, not `done`:** the selection *criterion* is written and frozen,
-> but the full candidate table + exclusions are filled by `corpus/select.sql` in
-> Phase 1. The decision is made; the enumeration is a Phase-1 output.
+> **0.2 closed in Phase 1:** the selection *criterion* was frozen in Phase 0; the
+> full candidate table + exclusions were then filled by `corpus/select.sql` run
+> against the restored DB (18 pass the mechanical screen, corpus = 14 `IN`, 6
+> base-writers excluded). Criterion 1 was refined from "no INSERT/UPDATE/DELETE"
+> to "no *base-table* write" so the `#temp`-only `Get*Updates` are admitted.
 
 **Phase-0 exit:** every decision the later phases depend on is written and
 `Accepted`. No pipeline code until this is green.
@@ -77,15 +79,24 @@ Each task also carries a **fate** — what happens to it after the build:
 
 | # | Task | Target file | Status | Fate |
 |---|------|-------------|--------|------|
-| 1.1 | `docker compose`: SQL Server :11433 + Mongo :37017 + healthchecks | `docker-compose.yml` | todo | becomes-impl |
-| 1.2 | Restore + seed script (pinned .bak, SHA-checked, loud-failing) | `corpus/restore.sh` | todo | becomes-impl |
-| 1.3 | Extract the selected procedures verbatim | `corpus/procs/*.sql` | todo | becomes-impl |
-| 1.4 | Relational seed — branch-covering rows per §0.3 | `corpus/seed/relational.sql` | todo | becomes-impl |
-| 1.5 | Param-case sets per procedure (5–8, branch-covering) | `corpus/cases/*.json` | todo | becomes-impl |
-| 1.6 | Capture golden output from originals | `corpus/golden/*.json` | todo | becomes-impl |
-| 1.7 | Canonicalise golden (stable ordering, numeric normalisation) | `corpus/canonicalise.py` | todo | becomes-impl |
-| 1.8 | Mechanical Mongo seed (pure fn of relational seed) | `corpus/seed/to_mongo.py` | todo | becomes-impl |
-| 1.9 | Stability check: golden identical across two captures | `gates/verify-stable.sh` | todo | becomes-impl |
+| 1.1 | `docker compose`: SQL Server :11433 + Mongo :37017 + healthchecks | `docker-compose.yml` | done | becomes-impl |
+| 1.2 | Restore + seed script (pinned .bak, SHA-checked, loud-failing) | `corpus/restore.sh` | done | becomes-impl |
+| 1.3 | Extract the selected procedures verbatim | `corpus/procs/*.sql` | done | becomes-impl |
+| 1.4 | Relational seed — branch-covering rows per §0.3 | `corpus/seed/relational.sql` | done | becomes-impl |
+| 1.5 | Param-case sets per procedure (5–8, branch-covering) | `corpus/cases/*.json` | done | becomes-impl |
+| 1.6 | Capture golden output from originals | `corpus/golden/*.json`, `corpus/capture-golden.{sh,py}` | done | becomes-impl |
+| 1.7 | Canonicalise golden (stable ordering, numeric normalisation) | `corpus/canonicalise.py` | done | becomes-impl |
+| 1.8 | Mechanical Mongo seed (pure fn of relational seed) | `corpus/seed/to_mongo.py` | done | becomes-impl |
+| 1.9 | Stability check: golden identical across two captures | `gates/verify-stable.sh` | done | becomes-impl |
+
+> **Phase 1 built in two tranches (ADR-0007).** Tranche 1 — the 11 tractable procs
+> — is complete: `relational.sql` seeds 16 branch-covering tables, 11 case files
+> hold 51 branch-covering cases, `capture-golden.{sh,py}` produces 51 canonical
+> golden files, and `verify-stable.sh` proves them byte-identical across two
+> captures. **Tranche 2** — the 3 temporal procs (`GetCustomer/Supplier/City
+> Updates`: system-versioning + `*_Archive` history + geography) — is the
+> remaining Phase-1 work; it extends the same four files against a harness now
+> proven green.
 
 **Phase-1 exit:** golden exists, is deterministic across re-captures, and was
 produced with zero model involvement. This is the foundation of trust — it must

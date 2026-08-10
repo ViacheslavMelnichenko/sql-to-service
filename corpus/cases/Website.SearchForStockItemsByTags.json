@@ -1,0 +1,48 @@
+{
+  "proc": "Website.SearchForStockItemsByTags",
+  "shape": "for-json",
+  "ordered": true,
+  "notes": "LIKEs si.Tags, which is NULLABLE. Item 4 (cardboard box) has NULL Tags -> LIKE-on-NULL is never true, so it can never be returned. That is the branch this proc exists to exercise vs SearchForStockItems.",
+  "cases": [
+    {
+      "name": "gadget-tag-match",
+      "why": "'Gadget' tag is on items 1,2,5 -> three rows ordered by name (food warmer, missile, rocket). Note item 4 is absent (NULL Tags).",
+      "params": [
+        {"name": "SearchText", "type": "nvarchar", "value": "Gadget"},
+        {"name": "MaximumRowsToReturn", "type": "int", "value": 100}
+      ]
+    },
+    {
+      "name": "novelty-tag-one",
+      "why": "'Novelty' tag is only on item 5 -> single row. Proves multi-tag items match on any contained tag.",
+      "params": [
+        {"name": "SearchText", "type": "nvarchar", "value": "Novelty"},
+        {"name": "MaximumRowsToReturn", "type": "int", "value": 100}
+      ]
+    },
+    {
+      "name": "chocolate-tag-one",
+      "why": "'Chocolate' tag is only on item 3 -> single row.",
+      "params": [
+        {"name": "SearchText", "type": "nvarchar", "value": "Chocolate"},
+        {"name": "MaximumRowsToReturn", "type": "int", "value": 100}
+      ]
+    },
+    {
+      "name": "cardboard-null-tags-empty",
+      "why": "'cardboard' is item 4's name/details but item 4 has NULL Tags -> LIKE-on-NULL fails -> [] . The null-Tags branch: a needle that WOULD match on details returns nothing on tags.",
+      "params": [
+        {"name": "SearchText", "type": "nvarchar", "value": "cardboard"},
+        {"name": "MaximumRowsToReturn", "type": "int", "value": 100}
+      ]
+    },
+    {
+      "name": "top-1-pagination",
+      "why": "'Gadget' matches three but TOP(1) returns only the first by name (food warmer).",
+      "params": [
+        {"name": "SearchText", "type": "nvarchar", "value": "Gadget"},
+        {"name": "MaximumRowsToReturn", "type": "int", "value": 1}
+      ]
+    }
+  ]
+}

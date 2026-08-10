@@ -76,11 +76,22 @@ KEY_MAP = {
     "Sales_Orders": "OrderID",
     "Sales_OrderLines": "OrderLineID",
     "Sales_Invoices": "InvoiceID",
+    "Sales_InvoiceLines": "InvoiceLineID",
+    "Sales_CustomerTransactions": "CustomerTransactionID",
     "Purchasing_Suppliers": "SupplierID",
+    "Purchasing_PurchaseOrders": "PurchaseOrderID",
+    "Purchasing_PurchaseOrderLines": "PurchaseOrderLineID",
+    "Purchasing_SupplierTransactions": "SupplierTransactionID",
     "Warehouse_StockItems": "StockItemID",
     "Warehouse_StockItemHoldings": "StockItemID",
+    "Warehouse_StockItemTransactions": "StockItemTransactionID",
+    "Warehouse_PackageTypes": "PackageTypeID",
     "Application_People": "PersonID",
     "Application_Cities": "CityID",
+    # Countries/StateProvinces are not seeded in tranche 1 (Cities carries only
+    # ID + name); kept here so the map matches the WWI schema if a later tranche
+    # adds them. Extra keys for absent tables are harmless — KEY_MAP is consulted
+    # per table that is actually present in the relational seed.
     "Application_Countries": "CountryID",
     "Application_StateProvinces": "StateProvinceID",
 }
