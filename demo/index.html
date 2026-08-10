@@ -154,6 +154,17 @@
   .oracle-lane .feeds { font-size: 13px; color: var(--ink-2); }
   @media (max-width: 900px) { .flow { grid-template-columns: 1fr 1fr; } .oracle-lane { grid-template-columns: 1fr; } }
 
+  /* ---- roadmap / big-picture schema (the orientation slide) ---- */
+  .roadmap { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; align-items: stretch; margin: 16px 0 4px; }
+  .phase { position: relative; background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 13px 13px 12px; display: flex; flex-direction: column; gap: 7px; }
+  .phase .num { width: 22px; height: 22px; flex: none; border-radius: 999px; background: var(--clay); color: #fff; font-size: 12px; font-weight: 700; display: grid; place-items: center; }
+  .phase h4 { margin: 0; font-size: 14px; color: var(--ink); }
+  .phase p { margin: 0; font-size: 12px; color: var(--ink-2); line-height: 1.4; }
+  .phase .where { margin-top: auto; font-family: ui-monospace, monospace; font-size: 11px; color: var(--clay-d); background: var(--tint); border: 1px solid var(--clay-line); border-radius: 6px; padding: 3px 6px; }
+  /* connector chevrons between phases */
+  .phase + .phase::before { content: "›"; position: absolute; left: -8px; top: 50%; transform: translateY(-50%); color: var(--ink-3); font-size: 18px; line-height: 1; }
+  @media (max-width: 900px) { .roadmap { grid-template-columns: 1fr 1fr; } .phase + .phase::before { display: none; } }
+
   /* ---- light fallback: only when the OS explicitly asks for light ----
      Dark is the default (the :root above). This restores the original warm-ivory
      palette for viewers whose system is set to light. Same variables, flipped. */
@@ -233,6 +244,44 @@
         <tr><td class="p">evals/</td><td>The harness, its method, and results (Phase 4 — in progress).</td></tr>
       </table>
       <div class="note">The four ideas that follow map one-to-one onto <code>docs/adr/</code>. When a step says "see ADR-000X", that file is the full argument.</div>
+    </section>
+
+    <!-- 1b · the big picture before the step-by-step -->
+    <section class="slide" data-title="Big picture">
+      <p class="kicker">Orientation · read this before the steps</p>
+      <h2 class="title">The whole idea in four moves</h2>
+      <p class="lede">The steps that follow go deep, one command at a time. Before that, here is the shape of the entire system — <strong>what happens, in what order, and where in the repo to look for each part.</strong></p>
+
+      <div class="roadmap">
+        <div class="phase">
+          <span class="num">1</span>
+          <h4>Freeze the answer</h4>
+          <p>Run the <em>original</em> T-SQL on seeded data and commit its output — <em>before any model exists</em>. This is the oracle.</p>
+          <span class="where">corpus/golden/</span>
+        </div>
+        <div class="phase">
+          <span class="num">2</span>
+          <h4>Let the AI do the work</h4>
+          <p>Four staged subagents with separated context and scoped tools turn the SQL into a .NET&nbsp;+&nbsp;Mongo service.</p>
+          <span class="where">.claude/agents/</span>
+        </div>
+        <div class="phase">
+          <span class="num">3</span>
+          <h4>Judge deterministically</h4>
+          <p>Hooks fire gates in the loop: build, unit, then the <strong>differential</strong> vs the frozen oracle. No model grades itself.</p>
+          <span class="where">gates/ · .claude/hooks/</span>
+        </div>
+        <div class="phase">
+          <span class="num">4</span>
+          <h4>Measure honestly</h4>
+          <p>A harness runs the real agent headless over every proc and reports accuracy <em>and</em> cost — failures included.</p>
+          <span class="where">evals/ <span class="muted">(Phase 4)</span></span>
+        </div>
+      </div>
+
+      <div class="note"><strong>Where you are in the deck:</strong> the next slides walk moves&nbsp;1–3 as <strong>Do / Check</strong> pairs you can run yourself, then reach move&nbsp;4. If a slide ever feels dense, come back here — every step is one box above, zoomed in.</div>
+
+      <p class="muted">One sentence to hold onto: <strong>the answer is frozen before the AI runs, so when the AI's output matches it, that match means something.</strong> Everything else is machinery to make that comparison honest and repeatable.</p>
     </section>
 
     <!-- 2 -->
