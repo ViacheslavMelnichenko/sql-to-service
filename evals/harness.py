@@ -62,8 +62,13 @@ CANONICALISE = ROOT / "corpus" / "canonicalise.py"
 
 # --- pre-registered constants (PREREGISTRATION.md — do not tune to fit a result) ---
 RETRY_CAP = 2                       # two retries after the first attempt (3 total)
-MODEL = "claude-opus-4-8-gateway"   # the intended model; the dated snapshot is
-                                    # captured from the first live invocation.
+# The model, as the headless CLI expects it: an alias ('opus'/'sonnet'/'fable') or a
+# dated full name ('claude-opus-5'), NOT the internal gateway id — `claude -p --model
+# claude-opus-4-8-gateway` is rejected by the CLI and every attempt fails with zero
+# tokens (which silently degrades a "live" run to a dry-run wearing a live label).
+# 'opus' pins the family (PREREGISTRATION.md); the exact dated snapshot is captured
+# from the first live invocation into model_snapshot, not chosen after the fact.
+MODEL = os.environ.get("EVAL_MODEL", "opus")
 TEMPERATURE = 0.0                   # deterministic decoding, recorded for the run
 
 # The run set. Deliberately mixed so run-001 shows a distribution, not a clean
