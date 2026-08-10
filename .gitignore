@@ -20,6 +20,11 @@ venv/
 [Bb]in/
 [Oo]bj/
 
+# Eval scaffold scratch — the dry run's output is a scaffold check, not a citable
+# result (wall-times shift, model fields null by construction). Only the real,
+# model-driven run-*.json / baseline.json are committed. See evals/results/README.md.
+evals/results/dry-run.json
+
 # Ukrainian working copies — every *.uk.md is a private translation, never committed
 *.uk.md
 

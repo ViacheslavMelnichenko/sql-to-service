@@ -13,12 +13,20 @@
 #
 # It runs gates/differential.sh (which seeds Mongo itself), i.e. the same gate a
 # human or CI runs — no special path for the agent.
+#
+# WHICH proc? A conversion turn is about ONE proc. The harness (evals/harness.py)
+# exports CONVERT_PROC before it spawns the agent, so this hook gates the proc the
+# agent is actually converting — not a hardcoded one. With CONVERT_PROC unset (a
+# human running a bare `claude` in the repo) it falls back to the showcase proc,
+# which is the historical behaviour.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
-if bash gates/differential.sh >/tmp/stop-differential.log 2>&1; then
+PROC="${CONVERT_PROC:-Website.SearchForCustomers}"
+
+if bash gates/differential.sh "$PROC" >/tmp/stop-differential.log 2>&1; then
   echo "[stop-differential] differential green — agent may stop" >&2
   exit 0
 fi

@@ -159,8 +159,8 @@ the single highest-leverage item in the whole tracker.
 |---|------|----------------|--------|
 | B.1 | De-hardcode the gates over the corpus | `gates/differential.sh`, `gates/mutation-check.sh`, `gates/build.sh`, `gates/verify.sh`, `generated/runners.json` | done |
 | B.2 | Convert 2–3 more procs, incl. one decimal-bearing | `generated/GetStockHoldingUpdatesService.cs` (+ csproj/runner/test) | done |
-| B.3 | Minimal real eval harness + one honest result | `evals/harness.py`, `run.sh`, `evals/results/run-001.json` | todo |
-| B.4 | Naive single-prompt baseline (the control) | `evals/results/baseline.json` | todo |
+| B.3 | Minimal real eval harness + one honest result | `evals/harness.py`, `run.sh`, `evals/results/run-001.json` | blocked |
+| B.4 | Naive single-prompt baseline (the control) | `evals/results/baseline.json` | blocked |
 | B.5 | Wire the gates into CI as required checks | `.github/workflows/verify.yml` | todo |
 | B.6 | Gate-time seed-identity assertion | `gates/differential.sh` (or `verify.sh`) | todo |
 
@@ -209,6 +209,28 @@ stays true.
 converted end-to-end and green on its differential, AND the precision mutant fires
 and is caught against it. Bonus: one temporal proc, to exercise that tier too.
 **Depends on:** B.1 (so the new procs are gated without hand-editing scripts).
+
+**B.3 harness built, blocked on a live run.** `evals/harness.py` + `evals/run.sh`
+exist and are complete: they drive the four-stage pipeline through the real
+`claude -p` headless CLI, enforce the retry cap of 2 across attempts (the Stop hook
+is now proc-aware via `CONVERT_PROC`), decompose the gate into a failure taxonomy
+(`failed:build|unit|differential|retry_cap`), and compute the pre-registered
+`cleared_within_cap` metric — including the **SHA-256 identity check** the
+pre-registration promises (canonical produced output vs canonical golden), plus a
+`source_sha256` so a reviewer can confirm which artifact was measured. A model-free
+`--dry-run` exercises every deterministic part against the committed services and
+is **green (2/2, both hashes identical)** — this is the scaffold proof, gitignored
+and explicitly not citable as a result. **What is missing is the one thing that
+needs a model: the live `run-001.json`.** The environment's safety classifier
+blocks launching a nested headless agent loop with elevated permissions unless the
+operator explicitly authorises it (it spends real API budget and drops per-action
+gating), so `run.sh --live` gates the run behind a typed confirmation / `EVAL_LIVE_OK`
+and the file is produced by a single authorised command once that environment is
+available. Fabricating it was never an option — the pre-registration forbids
+retrofitted numbers, and a composed result is the exact fraud this repo polices.
+The tail of B.3 (revert A.3 to present tense, replace the demo's illustrative
+Phase-4 table) stays parked until the real numbers exist. B.4 (baseline) rides the
+same plumbing and is blocked on the same opt-in.
 
 ### B.3 — Minimal real eval harness + one honest result  ⭐ highest ROI
 **Problem.** The third pillar of the thesis — "measurement that proves it did" —
