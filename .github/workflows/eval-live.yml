@@ -44,10 +44,10 @@ jobs:
     env:
       PYTHON: python3
       MONGO_URI: mongodb://localhost:37017/wwi
-      # Pin the CLI model alias the harness passes to `--model`. 'opus' is a valid
-      # alias; the internal gateway id is NOT and every attempt would fail with zero
-      # tokens. The exact dated snapshot is captured from the first live invocation.
-      EVAL_MODEL: opus
+      # The model string the harness passes to `--model` — the same value the
+      # interactive Claude Code uses (~/.claude/settings.json). The exact dated
+      # snapshot is captured from the first live invocation, not chosen after.
+      EVAL_MODEL: claude-opus-4-8-gateway
     steps:
       - uses: actions/checkout@v4
 
