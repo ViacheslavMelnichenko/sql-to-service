@@ -1,0 +1,13 @@
+{
+  "//": "Per-proc build manifest (B.1). The gate scripts are proc-agnostic: given a PROC name, they look it up here for the csproj to build, the assembly to run, and the service source the mutation check mutates. Adding a converted proc means adding an entry here and its files under generated/ — no gate edit. Keys are the fully-qualified proc name (schema.Proc), matching corpus/cases/<key>.json and corpus/golden/<key>__*.json.",
+  "Website.SearchForCustomers": {
+    "csproj": "generated/SearchForCustomers.csproj",
+    "assembly": "SearchForCustomers",
+    "service": "generated/SearchForCustomersService.cs"
+  },
+  "Integration.GetStockHoldingUpdates": {
+    "csproj": "generated/GetStockHoldingUpdates.csproj",
+    "assembly": "GetStockHoldingUpdates",
+    "service": "generated/GetStockHoldingUpdatesService.cs"
+  }
+}

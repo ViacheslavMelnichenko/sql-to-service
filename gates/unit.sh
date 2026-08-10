@@ -5,11 +5,14 @@
 # passing is independent evidence the conversion is right, not the implementer
 # marking its own homework.
 #
-# The test project seeds its OWN isolated Mongo database (wwi_test_searchforcustomers,
-# dropped and recreated per run), so this gate needs the Mongo container up on :37017
-# but does NOT depend on seed-mongo.sh having run — it is self-contained. It does
-# need the `py` launcher on PATH: the tests shell out to corpus/canonicalise.py for
-# the gate's real normal form rather than reimplementing it in C#.
+# One test project covers EVERY converted proc: it compiles each service (see the
+# <Compile Include> list in the .csproj) and holds one *Tests.cs class per proc, so
+# `dotnet test` runs the whole corpus's unit suite in one pass. Each test class seeds
+# its OWN isolated Mongo database (wwi_test_<proc>, dropped and recreated per run), so
+# this gate needs the Mongo container up on :37017 but does NOT depend on
+# seed-mongo.sh having run — it is self-contained. It does need the `py` launcher on
+# PATH: the tests shell out to corpus/canonicalise.py for the gate's real normal form
+# rather than reimplementing it in C#.
 #
 #   bash gates/unit.sh
 set -euo pipefail

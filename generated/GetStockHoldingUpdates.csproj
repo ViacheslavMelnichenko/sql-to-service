@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The SECOND conversion (Integration.GetStockHoldingUpdates). Same minimal
+       service shape as the showcase proc (MongoDB.Driver, no web/DI sprawl), and
+       the same uniform runner contract so gates/differential.sh drives it with no
+       per-proc knowledge: <binary> '<paramsJson>' [mongoUri]. This proc is
+       zero-parameter, so paramsJson is "{}" or "[]", but the contract is uniform
+       across the corpus by design (B.1). -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <AssemblyName>GetStockHoldingUpdates</AssemblyName>
+    <RootNamespace>SqlToService.Generated</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MongoDB.Driver" Version="3.1.0" />
+  </ItemGroup>
+
+  <!-- This project compiles ONLY its own service + runner. The SDK's **/*.cs glob
+       would otherwise pull in the showcase proc's service (a second type, harmless)
+       and — fatally — its Program.cs (a second top-level entry point, which does not
+       compile). Enumerate this proc's two files explicitly and disable the glob. -->
+  <PropertyGroup>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="GetStockHoldingUpdatesService.cs" />
+    <Compile Include="GetStockHoldingUpdates.Program.cs" />
+  </ItemGroup>
+
+</Project>

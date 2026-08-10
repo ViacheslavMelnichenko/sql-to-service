@@ -2,36 +2,45 @@
 # Gate tool — task 3.3. The differential: does the generated service, reading from
 # Mongo, produce output that matches — value-by-value, after canonicalisation — the
 # golden captured from the ORIGINAL T-SQL reading from SQL Server — for every case?
-# This is the gate with teeth
-# (ADR-0001). It is value-based: both sides pass through corpus/canonicalise.py
-# --ordered (Website.SearchForCustomers has an ORDER BY, so row order is part of
-# the output) before comparison, so representation never masks a real difference.
+# This is the gate with teeth (ADR-0001). It is value-based: both sides pass through
+# corpus/canonicalise.py before comparison (with --ordered when the proc has an
+# ORDER BY, so row order is part of the output), so representation never masks a real
+# difference.
 #
 # NON-CIRCULARITY: the golden was produced with no model in the room, and Mongo is
 # seeded mechanically from the SAME relational.sql the golden was captured from
 # (seed-mongo.sh → ADR-0003). Neither side is fitted to the other.
 #
+# PROC-AGNOSTIC (B.1). This script knows nothing about any one procedure. It takes a
+# PROC name and drives everything from committed data:
+#   * corpus/cases/<PROC>.json  — the cases, their params, and `ordered`
+#   * generated/runners.json     — which csproj to build and which assembly to run
+#   * corpus/golden/<PROC>__<case>.json — the oracle per case
+# The runner takes the case's `params` as a single JSON value on argv (the uniform
+# runner contract), so this script passes params through verbatim — no per-proc
+# knowledge of argument names, order, or types.
+#
 # Three things this script gets deliberately right:
 #   * It SEEDS Mongo first (seed-mongo.sh), so the gate never trusts ambient DB
 #     state — a stale collection can't turn a red into a green.
-#   * It BUILDS ONCE then runs the COMPILED BINARY (bin/…/SearchForCustomers.dll),
-#     never `dotnet run`. `dotnet run` prints NuGet NU1902/NU1903 advisories to
-#     stdout ahead of the JSON, which would corrupt the parse. The binary's stdout
-#     is clean JSON.
-#   * Params come from the SAME case file the golden was captured from
-#     (corpus/cases/Website.SearchForCustomers.json), so case↔golden can't drift.
+#   * It BUILDS ONCE then runs the COMPILED BINARY (bin/…/<assembly>.dll), never
+#     `dotnet run`. `dotnet run` prints NuGet NU1902/NU1903 advisories to stdout
+#     ahead of the JSON, which would corrupt the parse. The binary's stdout is clean.
+#   * Params come from the SAME case file the golden was captured from, so
+#     case↔golden can't drift.
 #
-#   bash gates/differential.sh          # seed + build + diff all cases
-#   NO_SEED=1 bash gates/differential.sh  # skip seeding (Mongo already current)
+#   bash gates/differential.sh                                  # showcase proc (default)
+#   bash gates/differential.sh Integration.GetStockHoldingUpdates
+#   NO_SEED=1 bash gates/differential.sh <PROC>                  # skip seeding
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-PROC="Website.SearchForCustomers"
+PROC="${1:-Website.SearchForCustomers}"
 CASES="corpus/cases/${PROC}.json"
 GOLDEN_DIR="corpus/golden"
-PROJ="generated/SearchForCustomers.csproj"
+MANIFEST="generated/runners.json"
 MONGO_URI="${MONGO_URI:-mongodb://localhost:37017/wwi}"
 PY="${PYTHON:-py}"
 
@@ -39,8 +48,30 @@ log() { printf '\033[1;34m[differential]\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31m[differential] FAIL:\033[0m %s\n' "$*" >&2; exit 1; }
 ok()  { printf '\033[1;32m[differential] PASS:\033[0m %s\n' "$*"; }
 
-[ -f "$CASES" ] || die "case file not found: $CASES"
+[ -f "$CASES" ]    || die "case file not found: $CASES"
+[ -f "$MANIFEST" ] || die "runner manifest not found: $MANIFEST"
 command -v "$PY" >/dev/null 2>&1 || die "the '$PY' launcher is required (canonicalise.py)"
+
+# Resolve (csproj, assembly) for this PROC from the manifest. tr -d '\r': the `py`
+# launcher emits CRLF on Windows; strip the CR or the assembly name carries a
+# trailing \r and no .dll matches.
+read -r PROJ ASSEMBLY < <("$PY" - "$MANIFEST" "$PROC" <<'PYEOF' | tr -d '\r'
+import json, sys
+m = json.load(open(sys.argv[1], encoding="utf-8"))
+r = m.get(sys.argv[2])
+if not r:
+    sys.stderr.write(f"proc {sys.argv[2]!r} not in manifest\n"); sys.exit(3)
+print(r["csproj"], r["assembly"])
+PYEOF
+) || die "proc '$PROC' not found in $MANIFEST (add its csproj/assembly there)"
+
+# Is row order part of this proc's output? (ORDER BY → yes.) Drives --ordered.
+ORDERED_FLAG="$("$PY" - "$CASES" <<'PYEOF' | tr -d '\r'
+import json, sys
+spec = json.load(open(sys.argv[1], encoding="utf-8"))
+print("--ordered" if spec.get("ordered") else "")
+PYEOF
+)"
 
 # 1. Seed Mongo from relational.sql so the differential reads the real seed, not
 #    ambient state. Skippable (NO_SEED=1) when a caller has just seeded — the
@@ -52,35 +83,36 @@ if [ "${NO_SEED:-0}" != "1" ]; then
 fi
 
 # 2. Build ONCE (Release) and locate the compiled binary. Never `dotnet run`.
-log "building service (Release)"
+log "building service (Release): $PROJ"
 dotnet build -c Release --nologo "$PROJ" >/dev/null \
-  || die "service does not build"
-BIN="$(find generated/bin/Release -name 'SearchForCustomers.dll' | head -1)"
-[ -n "$BIN" ] || die "built binary not found under generated/bin/Release"
+  || die "service does not build: $PROJ"
+BIN="$(find generated/bin/Release -name "${ASSEMBLY}.dll" | head -1)"
+[ -n "$BIN" ] || die "built binary not found: ${ASSEMBLY}.dll under generated/bin/Release"
 
-# 3. Extract (case, SearchText, MaximumRowsToReturn) from the case file as
-#    tab-separated lines. Done in Python (the '$PY' we already require) so the
-#    param mapping matches the type contract in the case file exactly.
-mapfile -t ROWS < <("$PY" - "$CASES" <<'PYEOF'
-import json, sys
+# 3. Extract (case, paramsJson) from the case file as tab-separated lines. paramsJson
+#    is the case's `params` array serialised compact — handed to the runner verbatim
+#    (the uniform contract). Base64 the JSON so tabs/quotes/spaces in it can never
+#    break the tab-separated framing.
+mapfile -t ROWS < <("$PY" - "$CASES" <<'PYEOF' | tr -d '\r'
+import json, sys, base64
 spec = json.load(open(sys.argv[1], encoding="utf-8"))
 for case in spec["cases"]:
-    p = {x["name"]: x["value"] for x in case.get("params", [])}
-    # The runner's argv: <SearchText> <MaximumRowsToReturn>. Tab-separated so a
-    # search text with spaces (there are none here, but be safe) survives.
-    print(f"{case['name']}\t{p['SearchText']}\t{p['MaximumRowsToReturn']}")
+    params = case.get("params", [])
+    blob = base64.b64encode(json.dumps(params).encode("utf-8")).decode("ascii")
+    print(f"{case['name']}\t{blob}")
 PYEOF
 )
 [ "${#ROWS[@]}" -gt 0 ] || die "no cases parsed from $CASES"
 
 fail=0
 for row in "${ROWS[@]}"; do
-  IFS=$'\t' read -r name search maxrows <<<"$row"
+  IFS=$'\t' read -r name blob <<<"$row"
+  params_json="$(printf '%s' "$blob" | "$PY" -c 'import sys,base64; sys.stdout.write(base64.b64decode(sys.stdin.read()).decode("utf-8"))')"
   golden="${GOLDEN_DIR}/${PROC}__${name}.json"
   [ -f "$golden" ] || { printf '  %-24s MISSING golden: %s\n' "$name" "$golden" >&2; fail=1; continue; }
 
-  got="$(dotnet "$BIN" "$search" "$maxrows" "$MONGO_URI" | "$PY" corpus/canonicalise.py --ordered)"
-  want="$("$PY" corpus/canonicalise.py --ordered "$golden")"
+  got="$(dotnet "$BIN" "$params_json" "$MONGO_URI" | "$PY" corpus/canonicalise.py $ORDERED_FLAG)"
+  want="$("$PY" corpus/canonicalise.py $ORDERED_FLAG "$golden")"
 
   if [ "$got" = "$want" ]; then
     printf '  \033[1;32m✓\033[0m %-24s identical after canonicalise\n' "$name"
@@ -91,5 +123,5 @@ for row in "${ROWS[@]}"; do
   fi
 done
 
-[ "$fail" = "0" ] || die "one or more cases differ from golden"
-ok "all ${#ROWS[@]} cases identical to golden (value-based, canonicalised)"
+[ "$fail" = "0" ] || die "one or more cases differ from golden ($PROC)"
+ok "all ${#ROWS[@]} cases identical to golden — $PROC (value-based, canonicalised)"

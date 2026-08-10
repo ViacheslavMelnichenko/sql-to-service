@@ -18,11 +18,18 @@
     <PackageReference Include="MongoDB.Driver" Version="3.1.0" />
   </ItemGroup>
 
-  <!-- The test project lives under generated/tests and compiles the service via an
-       explicit <Compile Include>. Keep the SDK's **/*.cs glob from pulling it into
-       this service build (it would drag in xunit and a second entry point). -->
+  <!-- Enumerate this proc's two files explicitly and disable the SDK's **/*.cs
+       glob. Two reasons, both load-bearing: (1) the test project under
+       generated/tests would otherwise be pulled in (xunit + a second entry point);
+       (2) once a SECOND proc lives in generated/ (GetStockHoldingUpdates), the glob
+       would pull ITS service and Program.cs in too — a second top-level entry point
+       that does not compile. Each proc's csproj now owns exactly its own files. -->
+  <PropertyGroup>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
   <ItemGroup>
-    <Compile Remove="tests/**/*.cs" />
+    <Compile Include="SearchForCustomersService.cs" />
+    <Compile Include="Program.cs" />
   </ItemGroup>
 
 </Project>

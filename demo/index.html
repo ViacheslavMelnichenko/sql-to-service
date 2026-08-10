@@ -798,7 +798,7 @@ exit=<b>2</b>
       <section class="sec">
         <p class="sec-eyebrow">What this proves — stated with its limits</p>
         <h3 class="sec-title">An honest scope note, from the script header</h3>
-        <div class="note">ADR-0006 also names a <code>decimal(18,4)→float</code> precision mutant — the classic money-rounding bug. This showcase proc returns no decimal column, so <code>type-coercion</code> stands in for that wrong-numeric-representation class here; true precision-loss gets exercised when a money-returning <code>Integration.Get*Updates</code> proc is converted. That gap is named openly rather than hidden. And the logic runs both ways: a single <em>uncaught</em> mutant would point at exactly one of two causes — the comparison is too loose, or the seed has a branch hole (ADR-0002) — so a failure here is diagnostic, not just a red mark.</div>
+        <div class="note">ADR-0006 also names a <code>decimal(18,4)→float</code> precision mutant — the classic money-rounding bug. The showcase proc returns no decimal column, so on it <code>type-coercion</code> stands in for that class. The precision mutant is exercised for real on the second converted proc, <code>Integration.GetStockHoldingUpdates</code>, which returns <code>LastCostPrice</code>: reading it through a double collapses <code>8.00</code>'s fixed scale to bare <code>8</code>, and the differential catches it — <strong>run, not just asserted</strong>. And the logic runs both ways: a single <em>uncaught</em> mutant would point at exactly one of two causes — the comparison is too loose, or the seed has a branch hole (ADR-0002) — so a failure here is diagnostic, not just a red mark.</div>
       </section>
     </section>
 
@@ -907,12 +907,12 @@ failed:differential 1   ·   flaky 1   ·   failed:retry_cap 0</pre></div>
       <section class="sec">
         <p class="sec-eyebrow">Measured — the free audit</p>
         <h3 class="sec-title">Real local runs, 2026-08-10, zero model calls</h3>
-        <p>These four are <em>facts</em>, captured from the runs shown on the earlier slides. Nothing here is an estimate. <strong>Scope:</strong> the two correctness tiles are the <em>one showcase proc</em> (<code>Website.SearchForCustomers</code>) — not a corpus-wide rate; the oracle-stability tile spans all 67 golden files across the 14 procs.</p>
+        <p>These four are <em>facts</em>, captured from the runs shown on the earlier slides. Nothing here is an estimate. <strong>Scope:</strong> the two correctness tiles cover the <em>two converted procs</em> (<code>Website.SearchForCustomers</code> and the decimal-bearing <code>Integration.GetStockHoldingUpdates</code>) — not a corpus-wide rate; the oracle-stability tile spans all 67 golden files across the 14 procs.</p>
         <div class="econ">
-          <div class="metric"><span class="lbl">Correctness <span class="scope">1 proc</span></span><span class="val">5/5</span><span class="sub"><code>differential</code> vs frozen golden — every showcase case identical after canonicalise. 6/6 unit green.</span></div>
-          <div class="metric"><span class="lbl">Gate has teeth <span class="scope">1 proc</span></span><span class="val">5/5</span><span class="sub">Injected one-line bugs all forced the differential red; pristine baseline stayed green.</span></div>
+          <div class="metric"><span class="lbl">Correctness <span class="scope">2 procs</span></span><span class="val">6/6</span><span class="sub"><code>differential</code> vs frozen golden — every case identical after canonicalise (5 + 1). 8/8 unit green.</span></div>
+          <div class="metric"><span class="lbl">Gate has teeth <span class="scope">2 procs</span></span><span class="val">8/8</span><span class="sub">Injected one-line bugs all forced the differential red — incl. the <code>decimal→double</code> precision mutant; pristine baselines stayed green.</span></div>
           <div class="metric"><span class="lbl">Oracle stable <span class="scope">14 procs</span></span><span class="val">67/67</span><span class="sub">Golden files byte-identical across two independent captures — deterministic seed.</span></div>
-          <div class="metric"><span class="lbl">Audit cost</span><span class="val">$0.00</span><span class="sub">verify ~53s + mutation ~2m10s. Zero tokens: the whole audit runs with no model.</span></div>
+          <div class="metric"><span class="lbl">Audit cost</span><span class="val">$0.00</span><span class="sub">verify ~67s + mutation ~3m14s. Zero tokens: the whole audit runs with no model.</span></div>
         </div>
       </section>
 
@@ -958,7 +958,7 @@ failed:differential 1   ·   flaky 1   ·   failed:retry_cap 0</pre></div>
           <tr><td class="p">3 · agents</td><td>Four subagents + four skills, separated context — <code>.claude/</code> (ADR-0004)</td></tr>
           <tr><td class="p">4 · gates</td><td><code>verify.sh</code> reproduces the verdict, no model — <code>gates/</code> (ADR-0005)</td></tr>
           <tr><td class="p">5 · hooks</td><td>Every transition gated in-loop — <code>.claude/settings.json</code></td></tr>
-          <tr><td class="p">6 · teeth</td><td>5/5 mutants caught — <code>gates/mutation-check.sh</code> (ADR-0006)</td></tr>
+          <tr><td class="p">6 · teeth</td><td>8/8 mutants caught across 2 procs — <code>gates/mutation-check.sh</code> (ADR-0006)</td></tr>
           <tr><td class="p">7 · retry</td><td>Failures fed back, cap 2 — <code>pipeline/retry.md</code></td></tr>
           <tr><td class="p">8 · measure</td><td>Real headless runs, cost + failures — <code>evals/</code> (Phase 4)</td></tr>
         </table>
@@ -1465,7 +1465,7 @@ exit=<b>2</b>
       <section class="sec">
         <p class="sec-eyebrow">Що це доводить — заявлено з межами</p>
         <h3 class="sec-title">Чесна примітка про обсяг, із заголовка скрипта</h3>
-        <div class="note">ADR-0006 також називає мутанта точності <code>decimal(18,4)→float</code> — класичний баг округлення грошей. Ця showcase-процедура не повертає decimal-колонки, тож <code>type-coercion</code> тут заступає клас «хибне числове представлення»; справжню втрату точності опрацьовано, коли конвертується грошова процедура <code>Integration.Get*Updates</code>. Цю прогалину названо відкрито, а не приховано. І логіка працює в обидва боки: один <em>неспійманий</em> мутант указав би рівно на одну з двох причин — порівняння занадто вільне, або в seed є діра в гілці (ADR-0002) — тож провал тут діагностичний, а не просто червона мітка.</div>
+        <div class="note">ADR-0006 також називає мутанта точності <code>decimal(18,4)→float</code> — класичний баг округлення грошей. Showcase-процедура не повертає decimal-колонки, тож на ній <code>type-coercion</code> заступає цей клас. Мутанта точності опрацьовано по-справжньому на другій сконвертованій процедурі — <code>Integration.GetStockHoldingUpdates</code>, яка повертає <code>LastCostPrice</code>: читання його через double згортає фіксований масштаб <code>8.00</code> до голого <code>8</code>, і differential це ловить — <strong>запущено, а не лише проголошено</strong>. І логіка працює в обидва боки: один <em>неспійманий</em> мутант указав би рівно на одну з двох причин — порівняння занадто вільне, або в seed є діра в гілці (ADR-0002) — тож провал тут діагностичний, а не просто червона мітка.</div>
       </section>
     </section>
 
@@ -1574,13 +1574,13 @@ failed:differential 1   ·   flaky 1   ·   failed:retry_cap 0</pre></div>
       <section class="sec">
         <p class="sec-eyebrow">Виміряно — безкоштовний аудит</p>
         <h3 class="sec-title">Реальні локальні запуски, 2026-08-10, нуль викликів моделі</h3>
-        <p><strong>Обсяг:</strong> дві плитки правильності — це <em>одна showcase-процедура</em> (<code>Website.SearchForCustomers</code>), а не показник по всьому корпусу; плитка стабільності оракула охоплює всі 67 golden-файлів по 14 процедурах.</p>
+        <p><strong>Обсяг:</strong> дві плитки правильності — це <em>дві сконвертовані процедури</em> (<code>Website.SearchForCustomers</code> і грошова <code>Integration.GetStockHoldingUpdates</code>), а не показник по всьому корпусу; плитка стабільності оракула охоплює всі 67 golden-файлів по 14 процедурах.</p>
         <p>Ці чотири — <em>факти</em>, захоплені із запусків, показаних на попередніх слайдах. Ніщо тут не є оцінкою.</p>
         <div class="econ">
-          <div class="metric"><span class="lbl">Правильність <span class="scope">1 проц.</span></span><span class="val">5/5</span><span class="sub"><code>differential</code> проти замороженого golden — кожен showcase-кейс ідентичний після canonicalise. 6/6 unit зелені.</span></div>
-          <div class="metric"><span class="lbl">Перевірка з зубами <span class="scope">1 проц.</span></span><span class="val">5/5</span><span class="sub">Впорснуті однорядкові баги всі зробили differential червоним; незаплямований baseline лишився зеленим.</span></div>
+          <div class="metric"><span class="lbl">Правильність <span class="scope">2 проц.</span></span><span class="val">6/6</span><span class="sub"><code>differential</code> проти замороженого golden — кожен кейс ідентичний після canonicalise (5 + 1). 8/8 unit зелені.</span></div>
+          <div class="metric"><span class="lbl">Перевірка з зубами <span class="scope">2 проц.</span></span><span class="val">8/8</span><span class="sub">Впорснуті однорядкові баги всі зробили differential червоним — зокрема мутант точності <code>decimal→double</code>; незаплямовані baseline лишилися зеленими.</span></div>
           <div class="metric"><span class="lbl">Оракул стабільний <span class="scope">14 проц.</span></span><span class="val">67/67</span><span class="sub">Golden-файли побайтно ідентичні у двох незалежних захопленнях — детермінований seed.</span></div>
-          <div class="metric"><span class="lbl">Вартість аудиту</span><span class="val">$0.00</span><span class="sub">verify ~53s + mutation ~2m10s. Нуль токенів: увесь аудит працює без моделі.</span></div>
+          <div class="metric"><span class="lbl">Вартість аудиту</span><span class="val">$0.00</span><span class="sub">verify ~67s + mutation ~3m14s. Нуль токенів: увесь аудит працює без моделі.</span></div>
         </div>
       </section>
 
@@ -1626,7 +1626,7 @@ failed:differential 1   ·   flaky 1   ·   failed:retry_cap 0</pre></div>
           <tr><td class="p">3 · агенти</td><td>Чотири субагенти + чотири скіли, розділений контекст — <code>.claude/</code> (ADR-0004)</td></tr>
           <tr><td class="p">4 · gates</td><td><code>verify.sh</code> відтворює вердикт, без моделі — <code>gates/</code> (ADR-0005)</td></tr>
           <tr><td class="p">5 · хуки</td><td>Кожен перехід перевіряється в циклі — <code>.claude/settings.json</code></td></tr>
-          <tr><td class="p">6 · зуби</td><td>5/5 мутантів спіймано — <code>gates/mutation-check.sh</code> (ADR-0006)</td></tr>
+          <tr><td class="p">6 · зуби</td><td>8/8 мутантів спіймано на 2 процедурах — <code>gates/mutation-check.sh</code> (ADR-0006)</td></tr>
           <tr><td class="p">7 · повтори</td><td>Провали повертаються, ліміт 2 — <code>pipeline/retry.md</code></td></tr>
           <tr><td class="p">8 · вимір</td><td>Реальні headless-запуски, вартість + провали — <code>evals/</code> (Phase 4)</td></tr>
         </table>

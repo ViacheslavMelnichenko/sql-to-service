@@ -47,12 +47,17 @@ contradiction or committed mistake spends that credibility fast.
 **Tier A closed.** Exit notes: A.1 — the differential is now described as
 value-by-value after canonicalisation everywhere it is judged; `byte-identical`
 survives only in the golden *stability* check, where it is literally true. A.5 —
-`_bak;C` removed; the unwired `guard_path.py` removed (the wired hook is
-`guard-path.sh`, per `.claude/settings.json`); `__pycache__`/`.pytest_cache` were
-already `.gitignore`d and untracked. A.6 — real golden count is **67**; ADR-0002
-now carries a superseded-by-0007 annotation, and `GetStockHoldingUpdates`' single
-case was left as-is (its own `notes` already justify one case for a zero-parameter
-proc).
+`_bak;C` removed; `__pycache__`/`.pytest_cache` were already `.gitignore`d and
+untracked. **Correction (during B.1):** the A.5 deletion of `guard_path.py` was a
+mistake and has been reverted. The two guard files are **not** duplicates —
+`guard-path.sh` is the wired PreToolUse hook and its last line *delegates* to
+`guard_path.py` (which holds the actual path logic). Deleting the `.py` left the
+shell hook calling a missing file, so the guard would fail closed and block every
+write. `guard_path.py` was restored from `fac5b64` and re-checked (allows
+`generated/` → exit 0, blocks `corpus/` → exit 2). A.6 — real golden count is
+**67**; ADR-0002 now carries a superseded-by-0007 annotation, and
+`GetStockHoldingUpdates`' single case was left as-is (its own `notes` already
+justify one case for a zero-parameter proc).
 
 ### A.1 — Fix the `byte-for-byte` misstatement
 **Problem.** `README.md:91` (and the diagram around `:78`) says the differential
@@ -152,12 +157,32 @@ the single highest-leverage item in the whole tracker.
 
 | # | Task | Target file(s) | Status |
 |---|------|----------------|--------|
-| B.1 | De-hardcode the gates over the corpus | `gates/differential.sh`, `gates/mutation-check.sh` | todo |
-| B.2 | Convert 2–3 more procs, incl. one decimal-bearing | `generated/*Service.cs`, `corpus/cases/*.json` | todo |
+| B.1 | De-hardcode the gates over the corpus | `gates/differential.sh`, `gates/mutation-check.sh`, `gates/build.sh`, `gates/verify.sh`, `generated/runners.json` | done |
+| B.2 | Convert 2–3 more procs, incl. one decimal-bearing | `generated/GetStockHoldingUpdatesService.cs` (+ csproj/runner/test) | done |
 | B.3 | Minimal real eval harness + one honest result | `evals/harness.py`, `run.sh`, `evals/results/run-001.json` | todo |
 | B.4 | Naive single-prompt baseline (the control) | `evals/results/baseline.json` | todo |
 | B.5 | Wire the gates into CI as required checks | `.github/workflows/verify.yml` | todo |
 | B.6 | Gate-time seed-identity assertion | `gates/differential.sh` (or `verify.sh`) | todo |
+
+**B.1 done.** The gates are proc-agnostic, driven by a new manifest
+`generated/runners.json` (proc → csproj/assembly/service) plus a **uniform runner
+contract**: every runner takes the case's `params` as one JSON value on argv, so
+`differential.sh <Proc>` passes `corpus/cases/<Proc>.json`'s params through verbatim
+with zero per-proc knowledge, and reads `--ordered` from the case's `ordered` flag.
+`build.sh`/`verify.sh` loop the whole manifest; `mutation-check.sh` takes a `<Proc>`
+and applies that proc's own catalogue. Adding a converted proc is a manifest entry +
+its files under `generated/` — no gate edit. (Windows gotcha closed: the `py`
+launcher emits CRLF, so every manifest/case value captured in the scripts is piped
+through `tr -d '\r'`, or a trailing CR breaks path/`.dll` lookups.)
+
+**B.2 done.** `Integration.GetStockHoldingUpdates` (zero-param, decimal-bearing) is
+converted end-to-end and green: differential 1/1, unit 8/8 across both procs. The
+**precision mutant now fires and is caught** on a real run — closing the gap
+`mutation-check.sh` used to only *disclose*. Verified the catch is genuine (the
+mutant emits well-formed JSON; it is caught because reading `LastCostPrice` through a
+double collapses `8.00`'s fixed scale to bare `8`, ≠ golden `"8.0000"`), not a crash.
+Branch-hole note recorded in the mutation script: the `8.00` row is load-bearing —
+the `12.50` row alone would not catch the mutant.
 
 ### B.1 — De-hardcode the gates over the corpus
 **Problem.** `gates/differential.sh` and `mutation-check.sh` hardcode

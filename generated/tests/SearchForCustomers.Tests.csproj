@@ -20,8 +20,14 @@
     <PackageReference Include="MongoDB.Driver" Version="3.1.0" />
   </ItemGroup>
 
+  <!-- Compile each converted service under test. The default glob (this dir's
+       tests/*.cs) already picks up the *Tests.cs files; the services live one level
+       up in generated/ and are pulled in explicitly. Program.cs files are NOT
+       included — they carry top-level statements (a second entry point) and the
+       test host provides its own. -->
   <ItemGroup>
     <Compile Include="..\SearchForCustomersService.cs" />
+    <Compile Include="..\GetStockHoldingUpdatesService.cs" />
   </ItemGroup>
 
 </Project>
