@@ -262,7 +262,6 @@
   .seg button + button { border-left: 1px solid var(--line); }
   .seg button.on { background: var(--clay); color: #fff; }
   .seg button:not(.on):hover { background: var(--hover); color: var(--ink); }
-  .seg .lbl { color: var(--ink-3); font-size: 11px; padding: 0 4px 0 8px; align-self: center; letter-spacing: .04em; text-transform: uppercase; }
 </style>
 </head>
 <body>
@@ -282,12 +281,10 @@
 
     <div class="bar">
       <span class="seg" role="group" aria-label="Theme">
-        <span class="lbl" data-t="theme">Theme</span>
         <button id="th-light" type="button">Light</button>
         <button id="th-dark" type="button">Dark</button>
       </span>
       <span class="seg" role="group" aria-label="Language">
-        <span class="lbl">Lang</span>
         <button id="lang-en" type="button">ENG</button>
         <button id="lang-uk" type="button">UA</button>
       </span>
