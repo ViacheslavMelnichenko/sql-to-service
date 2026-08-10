@@ -52,9 +52,12 @@ Three things carry that claim:
 2. **Agentic engineering, not a prompt.** Staged subagents with separated context,
    governed by skills, gated by hooks — the way a production agent is actually
    built.
-3. **Honest measurement.** A harness runs the real agent headless over every
-   procedure and reports accuracy *and* cost, including the failures — because a
-   result with no failures is a finding to investigate, not a win.
+3. **Honest measurement.** A harness (`evals/harness.py`, Phase 4 — the scaffold
+   runs today, the live measurement is the next step) is built to run the real
+   agent headless over each procedure and report accuracy *and* cost, failures
+   included — because a result with no failures is a finding to investigate, not a
+   win. The design is deliberate about *not* claiming the corpus-wide numbers before
+   that run happens.
 
 ---
 
@@ -175,9 +178,12 @@ flowchart TB
 | **Hooks** | `.claude/settings.json` | `PostToolUse` builds after every write; `Stop` runs the differential before the agent may finish; `PreToolUse` blocks writes outside allowed folders. Gates run *in the loop*, not after the fact. |
 | **Tools** | `gates/*.sh` (Bash now; an MCP server is a planned stretch) | The gate is a deterministic tool the agent *calls* — the model never grades itself. |
 
-The harness runs Claude Code **headless** (`claude -p …`) once per procedure and
-collects the real token cost from each run, so the reported numbers come from
-actual agent executions, not mocks.
+The harness is built to run Claude Code **headless** (`claude -p …`) once per
+procedure and collect the real token cost from each run, so the reported numbers
+will come from actual agent executions, not mocks. To be exact about what has run:
+the showcase conversion was carried through these four stages **by hand** to prove
+the pipeline end to end; the headless loop that does it autonomously is the harness's
+next step, and no number here is presented as if that loop had already produced it.
 
 ---
 
@@ -237,6 +243,19 @@ Stating the scope limits up front is credibility, not modesty:
   product, or engagement data. The corpus is the public MIT-licensed
   WideWorldImporters sample. Any magnitudes here are the demo's own, measured on
   the demo — they do not stand in for figures from any real engagement.
+- **Not applicable to every procedure.** The non-circular oracle rests on being able
+  to capture a golden output from the original proc and re-read it later — which
+  works only for procs that are **read-only** (no base-table write), **deterministic**
+  (no `NEWID`/`GETDATE`/`SYSDATETIME` or other session-dependent state), and return a
+  **single result set**. Those are exactly `corpus/SELECTION.md`'s inclusion criteria,
+  and they are a hard ceiling, not a matter of effort: a proc that mutates state has no
+  stable output to capture, and a non-deterministic one produces a different "golden"
+  every run. In a real backlog the majority of procedures write state, branch on the
+  clock, or return multiple shapes — and they need a *different* harness (snapshot-and-
+  compare against captured DB state before/after, transaction-rollback around the run),
+  not the value differential shown here. This repo addresses the tractable tier
+  correctly and says exactly where that tier ends; nothing here claims the method
+  generalises to a whole corpus untouched.
 
 ---
 

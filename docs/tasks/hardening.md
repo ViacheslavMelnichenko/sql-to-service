@@ -323,9 +323,44 @@ near-zero, and that this is fine *if positioned honestly* — but fatal if overs
 
 | # | Task | Target file(s) | Status |
 |---|------|----------------|--------|
-| C.1 | State the method's applicability ceiling up front | `README.md` | todo |
-| C.2 | Client-deployability story (on-prem, PII, onboarding cost) | `docs/DEPLOYABILITY.md` (new), `docs/SECURITY.md` | todo |
-| C.3 | Positioning: sell the thinking, not a finished product | `README.md` (pitch), demo lede | todo |
+| C.1 | State the method's applicability ceiling up front | `README.md` | done |
+| C.2 | Client-deployability story (on-prem, PII, onboarding cost) | `docs/DEPLOYABILITY.md` (new), `docs/SECURITY.md` | done |
+| C.3 | Positioning: sell the thinking, not a finished product | `README.md` (pitch), demo lede | done |
+
+**Tier C closed.** Exit notes:
+
+**C.1 done.** A fourth bullet in README's "What this is *not*" names the ceiling
+in that section's own voice: the oracle covers read-only / deterministic /
+single-result-set procs (verbatim the `corpus/SELECTION.md` criteria), it is a
+hard structural limit not an effort one (a state-mutating proc has no stable output
+to capture; a non-deterministic one produces a different "golden" each run), and the
+stateful/non-deterministic majority of a real backlog needs a *different* harness
+(snapshot-and-compare, transaction-rollback). No claim implies corpus-wide
+generality. Mirrored in `README.uk.md`.
+
+**C.2 done.** New `docs/DEPLOYABILITY.md` answers the four buyer questions head-on:
+(a) the Claude Code dependency — the *gate* is model-agnostic and runs offline for
+$0, the *generator* needs Claude Code API access and has no air-gapped story today;
+(b) the PII gap — the demo only sidesteps it by using public sample data, and a
+masking/synthesis step (derive shape + branch-covering cases from the real schema,
+synthesise the rows, capture golden over synthetic input so non-circularity holds)
+is a stated prerequisite, not built; (c) secrets — the `.env`-in-argv smell named
+with the secrets-manager / least-privilege-principal fix; (d) per-proc cost — the
+*shape* stated honestly (gate integration near-zero and free; generation cost is the
+number the harness is built to measure, deliberately unstated until `run-001.json`).
+`docs/SECURITY.md` carries the concrete secret handling, the PII/synthesis
+prerequisite, supply-chain pinning, and the threat-model boundary (the model is
+deliberately outside the trusted base for correctness). Both linked from
+`docs/README.md`. Both mirrored in `.uk.md`.
+
+**C.3 done.** The demo lede no longer opens "An AI wrote this migration" (an implied
+autonomy the harness doesn't demonstrate) — it now leads with the engineering
+discipline and states outright that a human carried the showcase through the stages
+by hand. README claim #3 and the "reviewer will find here" harness paragraph are
+softened from present-tense autonomy to "built to / next step," with the by-hand
+fact stated explicitly. Mirrored in `README.uk.md`. Nothing now claims autonomy the
+harness doesn't yet show; the pitch is the judgment (non-circular oracle, proven
+teeth, pre-registration), not a finished product.
 
 ### C.1 — State the method's applicability ceiling up front
 **Problem.** The oracle technique structurally applies only to **read-only,

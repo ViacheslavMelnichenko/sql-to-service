@@ -54,3 +54,13 @@ Each ADR is one frozen decision the pipeline depends on. They are permanent.
 | --- | --- |
 | [`../corpus/SOURCE.md`](../corpus/SOURCE.md) | Where the corpus comes from and how it is pinned (URL + SHA). |
 | [`../corpus/SELECTION.md`](../corpus/SELECTION.md) | Which procedures were selected, the criterion, and what was excluded. |
+
+## Deploying it for real
+
+The honest answer to *"could you run this at a client?"* — what ports, what needs a
+model, and what must be built before real data is touched.
+
+| Document | What it answers |
+| --- | --- |
+| [`DEPLOYABILITY.md`](DEPLOYABILITY.md) | The Claude Code dependency and on-prem story, the PII/data-in-repo gap and the masking step that closes it, secrets handling, and the shape of the per-proc onboarding cost. What is a portable capability vs. an overreach. |
+| [`SECURITY.md`](SECURITY.md) | Concrete secret handling, PII/synthesis prerequisite, supply-chain pinning, and the threat-model boundary — why the model is deliberately outside the trusted base for correctness. |
