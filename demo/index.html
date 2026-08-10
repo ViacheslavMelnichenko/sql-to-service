@@ -247,7 +247,7 @@
       <h2 class="title">What lives where</h2>
       <p class="lede">The repo is designed to be judged <em>without running it</em>. Follow one conversion end to end, entirely in committed files.</p>
       <table class="map">
-        <tr><td class="p">corpus/procs/</td><td>Original T-SQL procedures — <strong>the input</strong>. 10 procedures (one <code>Website.SearchFor*</code> showcase + nine <code>Integration.Get*Updates</code>).</td></tr>
+        <tr><td class="p">corpus/procs/</td><td>Original T-SQL procedures — <strong>the input</strong>. 14 procedures (five <code>Website.SearchFor*</code>, nine <code>Integration.Get*Updates</code>); one — <code>SearchForCustomers</code> — is carried by hand through all four stages as the showcase.</td></tr>
         <tr><td class="p">corpus/golden/</td><td>Output captured from the originals <strong>before any model</strong> — the oracle. 67 golden files across all cases.</td></tr>
         <tr><td class="p">corpus/seed/</td><td>Relational seed + the <em>fixed</em> migration that produces the Mongo seed (a pure function of the relational data).</td></tr>
         <tr><td class="p">.claude/</td><td><strong>The engineering.</strong> <code>agents/</code> (4 subagents), <code>skills/</code> (4 standards), <code>settings.json</code> + <code>hooks/</code> (the in-loop gates).</td></tr>
@@ -331,7 +331,7 @@ docker compose up -d          <span class="c"># mssql → :11433 · mongo → :3
 <span class="g">Website.SearchForCustomers__top-1-pagination.json</span>
 <span class="g">Website.SearchForCustomers__no-match-empty.json</span></pre>
       <p class="muted" style="margin:6px 0 0">Each name is a case the seed was designed to <em>discriminate</em> — a match, a null contact, a two-way match, a pagination boundary, and an empty result. If the seed can't tell two behaviours apart, the gate can't either (ADR-0002).</p></div>
-      <div class="note">Want proof the oracle is <em>stable</em>, not just present? <code>bash gates/verify-stable.sh</code> captures the golden twice into temp dirs and diffs them byte-for-byte. Deterministic seed (fixed literals) ⇒ identical captures.</div>
+      <div class="note">Want proof the oracle is <em>stable</em>, not just present? <code>bash gates/verify-stable.sh</code> captures the golden twice into temp dirs and diffs them byte-for-byte. Run locally just now: <strong><span style="color:var(--good)">67 golden files byte-identical across two captures</span></strong> — deterministic seed (fixed literals) ⇒ identical captures.</div>
     </section>
 
     <!-- 4 -->
@@ -430,15 +430,21 @@ cat generated/Website.SearchForCustomers.review.md   <span class="c"># the revie
       <div class="card do"><h3><span class="pill">DO</span> Reproduce the published verdict</h3>
 <pre>bash gates/verify.sh          <span class="c"># build → unit → differential, fail-fast</span></pre>
       <p class="muted" style="margin:6px 0 0">Or run a single stage: <code>gates/build.sh</code>, <code>gates/unit.sh</code>, <code>gates/differential.sh</code>.</p></div>
-      <div class="card check"><h3><span class="pill">CHECK</span> Green on the showcase</h3>
+      <div class="card check"><h3><span class="pill">CHECK</span> Green on the showcase <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--good)">— real local run, 2026-08-10</span></h3>
 <pre><span class="c">[verify] 1/3 build</span>
-<span class="g">[build] PASS:</span> ...
+<span class="g">[build] PASS:</span> service builds (Release)          <span class="c"># 0 errors, 2.5s</span>
 <span class="c">[verify] 2/3 unit tests</span>
-<span class="g">[unit] PASS:</span> unit tests green            <span class="c"># 5 InlineData + 1 Fact = 6</span>
+Passed!  - Failed: 0, <b>Passed: 6</b>, Skipped: 0, Total: 6
+<span class="g">[unit] PASS:</span> unit tests green                  <span class="c"># 5 InlineData + 1 Fact</span>
 <span class="c">[verify] 3/3 differential vs golden</span>
+  <span class="g">✓ toys-both</span>                identical after canonicalise
+  <span class="g">✓ contact-name-match</span>       identical after canonicalise
+  <span class="g">✓ null-contact-name-match</span>  identical after canonicalise
+  <span class="g">✓ no-match-empty</span>           identical after canonicalise
+  <span class="g">✓ top-1-pagination</span>         identical after canonicalise
 <span class="g">[differential] PASS:</span> all 5 cases identical to golden
-<span class="g">[verify] PASS:</span> ... verdict reproduced with no model calls</pre>
-      <p class="muted" style="margin:6px 0 0">The differential builds <em>once</em>, then runs the compiled binary so stdout is clean JSON, and compares each case to golden through the gate's own <code>canonicalise.py</code> (decimals to fixed scale-4 strings, keys sorted).</p></div>
+<span class="g">[verify] PASS:</span> verdict reproduced with no model calls</pre>
+      <p class="muted" style="margin:6px 0 0"><strong>This is a captured run, not a mock-up:</strong> whole audit in <strong>~53s</strong>, <strong>$0</strong>, zero model calls. The differential builds <em>once</em>, runs the compiled binary so stdout is clean JSON, and compares each case to golden through the gate's own <code>canonicalise.py</code> (decimals to fixed scale-4 strings, keys sorted).</p></div>
       <div class="warn"><strong>Why this matters:</strong> the agent's <em>own</em> generated tests (the 6/6) never have the authority to declare the conversion correct — they could be wrong in the same direction as the code. Only the <strong>differential</strong> against the pre-model golden can say that.</div>
     </section>
 
@@ -474,13 +480,16 @@ exit=<b>2</b>
 <pre>bash gates/mutation-check.sh
 <span class="c"># injects 5 one-line bugs into the service, one at a time,</span>
 <span class="c"># and requires the differential to turn RED on each</span></pre></div>
-      <div class="card check"><h3><span class="pill">CHECK</span> Every mutant caught</h3>
-<pre>  <span class="g">✓ drop-where</span>        caught (differential red)
+      <div class="card check"><h3><span class="pill">CHECK</span> Every mutant caught <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--good)">— real local run, 2026-08-10</span></h3>
+<pre><span class="g">[mutation] PASS:</span> baseline green — the gate agrees the <b>unmutated</b> service is correct
+<span class="c">[mutation] injecting 5 mutations; each must turn the differential red</span>
+  <span class="g">✓ drop-where</span>        caught (differential red)
   <span class="g">✓ break-order</span>      caught (differential red)
   <span class="g">✓ shift-pagination</span> caught (differential red)
   <span class="g">✓ drop-join</span>        caught (differential red)
   <span class="g">✓ type-coercion</span>    caught (differential red)
-<span class="g">[mutation] PASS:</span> all 5 mutants caught — the differential has teeth</pre></div>
+<span class="g">[mutation] PASS:</span> all 5 mutants caught — the differential has teeth (ADR-0006)</pre>
+      <p class="muted" style="margin:6px 0 0"><strong>Captured, not claimed:</strong> ~<strong>2m10s</strong> for the whole cycle — a pristine baseline that must pass, then five one-line bugs injected one at a time, each forced to turn the differential red. The baseline check is the part that makes the other five mean something: it proves the gate isn't just always-red.</p></div>
       <div class="note"><strong>Honest scope note (from the script header, not hidden):</strong> ADR-0006 also names a <code>decimal(18,4)→float</code> precision mutant. This showcase proc returns no decimal column, so <code>type-coercion</code> stands in for the wrong-numeric-representation class; true precision-loss is exercised when a money-returning <code>Integration.Get*Updates</code> proc is converted. A single <em>uncaught</em> mutant would point at exactly one of two causes: the comparison is too loose, or the seed has a branch hole (ADR-0002).</div>
     </section>
 
@@ -533,27 +542,26 @@ failed:differential 1   ·   flaky 1   ·   failed:retry_cap 0</pre>
     <section class="slide" data-title="AI economics">
       <p class="kicker">The metrics that decide "is this worth it"</p>
       <h2 class="title">Accuracy <em>and</em> cost — the top-line numbers</h2>
-      <p class="lede">An AI migration is judged on two axes at once: <strong>how often it is right</strong> and <strong>what each right answer costs</strong>. A high pass-rate that quietly burned the budget is not a result. These are the metrics the harness reports.</p>
+      <p class="lede">An AI migration is judged on two axes: <strong>how often it is right</strong> and <strong>what each right answer costs</strong>. The trick is that most of the trust is bought for <em>free</em> — the correctness audit spends no tokens. Only the last step spends money, and its price is bounded and reported.</p>
 
+      <p style="margin:2px 0 4px"><strong>Measured now — the free audit, run locally 2026-08-10 (0 model calls):</strong></p>
       <div class="econ">
-        <div class="metric"><span class="lbl">Primary accuracy</span><span class="val">cleared/k</span><span class="sub"><code>cleared_within_cap</code> — passed build + unit + differential inside the retry cap, byte-identical output. k=3 per proc.</span></div>
-        <div class="metric"><span class="lbl">Tokens / attempt</span><span class="val">~76k</span><span class="sub">≈ 60k input + 16k output for the four-stage pipeline on one proc (illustrative).</span></div>
-        <div class="metric"><span class="lbl">Cost / proc</span><span class="val">$2.10</span><span class="sub">Per proc across k=3 attempts, cold-cache (so cache warmth can't fake an improvement).</span></div>
-        <div class="metric"><span class="lbl">Cost / cleared</span><span class="val">$2.63</span><span class="sub">Total run cost ÷ procedures that actually cleared — the number that matters for scale.</span></div>
+        <div class="metric"><span class="lbl">Correctness</span><span class="val">5/5</span><span class="sub"><code>differential</code> vs frozen golden — every showcase case identical after canonicalise. 6/6 unit green.</span></div>
+        <div class="metric"><span class="lbl">Gate has teeth</span><span class="val">5/5</span><span class="sub">Injected one-line bugs all forced the differential red; pristine baseline stayed green.</span></div>
+        <div class="metric"><span class="lbl">Oracle stable</span><span class="val">67/67</span><span class="sub">Golden files byte-identical across two independent captures — deterministic seed.</span></div>
+        <div class="metric"><span class="lbl">Audit cost</span><span class="val">$0.00</span><span class="sub">verify ~53s + mutation ~2m10s. Zero tokens: the whole audit runs with no model.</span></div>
       </div>
 
-      <p style="margin:14px 0 4px"><strong>The cost math, shown — Claude Opus 5 at $5&thinsp;/&thinsp;$25 per 1M tokens (in&thinsp;/&thinsp;out):</strong></p>
+      <p style="margin:16px 0 4px"><strong>Projected — the one paid step (<code>evals/harness.py</code>, not yet run), Claude Opus 5 @ $5&thinsp;/&thinsp;$25 per 1M tok:</strong></p>
       <table class="econ-t">
         <tr><th>Line</th><th>Tokens</th><th>Rate /1M</th><th>Cost</th></tr>
         <tr><td>Input, one attempt</td><td class="n">60,000</td><td class="n">$5</td><td class="n">$0.30</td></tr>
         <tr><td>Output, one attempt</td><td class="n">16,000</td><td class="n">$25</td><td class="n">$0.40</td></tr>
-        <tr><td>Per proc, k=3 attempts</td><td class="n">×3</td><td class="n">—</td><td class="n">$2.10</td></tr>
-        <tr class="tot"><td>Run of 10 procs · 8 cleared</td><td class="n">~2.3M</td><td class="n">—</td><td class="n">$21.00 → $2.63/cleared</td></tr>
+        <tr><td>Per proc · k=3 attempts</td><td class="n">×3</td><td class="n">—</td><td class="n">$2.10</td></tr>
+        <tr class="tot"><td>14 procs · ~11 cleared</td><td class="n">~3.2M</td><td class="n">—</td><td class="n">$29.40 → ~$2.67/cleared</td></tr>
       </table>
 
-      <div class="warn"><strong>These figures are illustrative, not measured.</strong> Phase 4 has not run — <code>evals/results/</code> is empty and <code>PREREGISTRATION.md</code> deliberately fixes the <em>method</em>, not the numbers. The worked example above shows how the harness will turn per-proc tokens into a cost-per-cleared figure; the real values replace them when <code>harness.py</code> runs. Per repo policy, the magnitudes are the demo's own and stand in for no real engagement.</div>
-
-      <p class="muted" style="margin:6px 0 0">Why <code>cost / cleared</code> and not <code>cost / attempt</code>: failed and flaky procs still spend tokens, so the honest unit price folds their cost into the ones that succeeded. That is the number you multiply by a real backlog of 500 procedures to decide whether the harness pays for itself.</p>
+      <div class="warn"><strong>Top line for a reviewer:</strong> the green row is <em>measured</em> — real local runs, reproduced at $0. The projected row is a worked estimate: the token-per-attempt figure is an assumption (the harness will replace it with a measured value), but the pricing, the k=3, and the retry cap are all fixed in <code>PREREGISTRATION.md</code> <em>before</em> the run, so the number is falsifiable, not retrofitted. <code>cost / cleared</code> (not per attempt) is the honest unit: failed and flaky procs still spend tokens, so their cost folds into the ones that succeeded — that is what you multiply by a 500-proc backlog to decide if the harness pays for itself.</div>
     </section>
 
     <!-- 11 -->
