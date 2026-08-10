@@ -122,27 +122,80 @@ def capture_for_json(db: str, proc: str, params: list) -> list:
     return rows
 
 
-def capture_tabular(db: str, proc: str, params: list) -> list:
-    """Run a row-returning proc via a dynamically-typed #temp, return row objects.
+def _wkt_select(name: str, sql_type: str) -> str:
+    """SELECT-list fragment for one #cap column: geography → WKT, else verbatim.
 
-    The column list is discovered from the proc's first result set, so this stays a
-    pure function of the proc text — no column names are hand-declared here (that
-    would be a place to silently drift from the proc)."""
+    geography (a CLR type) is the one column FOR JSON refuses — it raises 13604
+    ("cannot serialize CLR objects"). GetCityUpdates emits a [Location] geography
+    column, so it is projected through .STAsText() — its Well-Known-Text form
+    ("POINT (-122.3321 47.6062)"), a deterministic, diff-able string; NULL geography
+    stays JSON null. The #cap still stores the native geography (INSERT..EXEC
+    captures the proc's real output verbatim, ADR-0001); only the read casts to
+    text. All other columns pass through by name."""
+    q = "[" + name.replace("]", "]]") + "]"
+    if sql_type.strip().lower() == "geography":
+        return f"{q}.STAsText() AS {q}"
+    return q
+
+
+def capture_tabular(db: str, proc: str, params: list, resultset=None) -> list:
+    """Run a row-returning proc via a #temp table, return row objects.
+
+    Two ways to shape #cap, both keeping this a function of the proc TEXT:
+
+      * describe (default) — the column list is discovered from the proc's first
+        result set via sys.dm_exec_describe_first_result_set, so nothing is
+        hand-declared. This is used for the tranche-1 Get*Updates.
+
+      * explicit `resultset` — the 3 tranche-2 temporal procs stage their output
+        through a #...Changes temp table, which defeats describe (error 11526,
+        "metadata could not be determined because ... uses a temp table"). For
+        those, the case file carries the result-set shape, transcribed VERBATIM
+        from the proc's own #...Changes CREATE TABLE / final SELECT (auditable
+        against the proc text). INSERT..EXEC fails LOUDLY on any column-count or
+        type drift, so a stale transcription cannot pass silently.
+
+    Either way, geography columns are projected as WKT (see _wkt_select)."""
     exec_lit = _exec_literal(proc, params)
-    exec_embedded = exec_lit.replace("'", "''")  # @exec is itself an N'...' literal
-    batch = (
-        "SET NOCOUNT ON;"
-        f"DECLARE @exec nvarchar(max) = N'{exec_embedded}';"
-        "DECLARE @cols nvarchar(max) = N'';"
-        "SELECT @cols = @cols + CASE WHEN @cols = N'' THEN N'' ELSE N',' END"
-        "  + QUOTENAME(name) + N' ' + system_type_name"
-        "  FROM sys.dm_exec_describe_first_result_set(@exec, NULL, 0)"
-        "  ORDER BY column_ordinal;"
-        "DECLARE @batch nvarchar(max) = N'CREATE TABLE #cap (' + @cols + N');'"
-        "  + N'INSERT INTO #cap ' + @exec + N';'"
-        "  + N'SELECT * FROM #cap FOR JSON PATH, INCLUDE_NULL_VALUES;';"
-        "EXEC sys.sp_executesql @batch;"
-    )
+
+    if resultset:
+        # Explicit shape from the case file (temp-table procs). Build the CREATE
+        # column list and the WKT-aware SELECT list from it directly.
+        cap_cols = ", ".join(
+            "[" + c["name"].replace("]", "]]") + "] " + c["type"] for c in resultset
+        )
+        sel_cols = ", ".join(_wkt_select(c["name"], c["type"]) for c in resultset)
+        batch = (
+            "SET NOCOUNT ON;"
+            f"CREATE TABLE #cap ({cap_cols});"
+            f"INSERT INTO #cap {exec_lit};"
+            f"SELECT {sel_cols} FROM #cap FOR JSON PATH, INCLUDE_NULL_VALUES;"
+        )
+    else:
+        # Discover the shape from the proc's first result set (describe).
+        exec_embedded = exec_lit.replace("'", "''")  # @exec is itself an N'...' literal
+        batch = (
+            "SET NOCOUNT ON;"
+            f"DECLARE @exec nvarchar(max) = N'{exec_embedded}';"
+            "DECLARE @cols nvarchar(max) = N'';"
+            "DECLARE @sel nvarchar(max) = N'';"
+            "SELECT @cols = @cols + CASE WHEN @cols = N'' THEN N'' ELSE N',' END"
+            "  + QUOTENAME(name) + N' ' + system_type_name,"
+            # geography can't go through FOR JSON — read it as WKT in the SELECT list.
+            "  @sel = @sel + CASE WHEN @sel = N'' THEN N'' ELSE N',' END"
+            "  + CASE WHEN system_type_name = N'geography'"
+            "         THEN QUOTENAME(name) + N'.STAsText() AS ' + QUOTENAME(name)"
+            "         ELSE QUOTENAME(name) END"
+            "  FROM sys.dm_exec_describe_first_result_set(@exec, NULL, 0)"
+            "  ORDER BY column_ordinal;"
+            "IF @cols IS NULL OR @cols = N'' "
+            "  THROW 50001, N'describe_first_result_set returned no columns "
+            "(temp-table proc? supply an explicit resultset in the case file)', 1;"
+            "DECLARE @batch nvarchar(max) = N'CREATE TABLE #cap (' + @cols + N');'"
+            "  + N'INSERT INTO #cap ' + @exec + N';'"
+            "  + N'SELECT ' + @sel + N' FROM #cap FOR JSON PATH, INCLUDE_NULL_VALUES;';"
+            "EXEC sys.sp_executesql @batch;"
+        )
     payload = _join_json_chunks(sqlcmd(db, batch))
     if payload == "":
         return []  # empty result: FOR JSON PATH over an empty #cap emits no rows
@@ -171,13 +224,17 @@ def main(argv=None) -> int:
         proc = spec["proc"]
         shape = spec["shape"]
         ordered = bool(spec.get("ordered", True))
+        # Optional explicit result-set shape for temp-table procs (see
+        # capture_tabular): a list of {"name","type"} transcribed from the proc's
+        # own #...Changes CREATE TABLE. Absent for describe-able procs.
+        resultset = spec.get("resultset")
         for case in spec["cases"]:
             name = case["name"]
             params = case.get("params", [])
             if shape == "for-json":
                 rows = capture_for_json(args.db, proc, params)
             elif shape == "tabular":
-                rows = capture_tabular(args.db, proc, params)
+                rows = capture_tabular(args.db, proc, params, resultset=resultset)
             else:
                 raise SystemExit(f"[capture] {proc}: unknown shape {shape!r}")
 

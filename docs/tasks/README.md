@@ -89,14 +89,18 @@ Each task also carries a **fate** — what happens to it after the build:
 | 1.8 | Mechanical Mongo seed (pure fn of relational seed) | `corpus/seed/to_mongo.py` | done | becomes-impl |
 | 1.9 | Stability check: golden identical across two captures | `gates/verify-stable.sh` | done | becomes-impl |
 
-> **Phase 1 built in two tranches (ADR-0007).** Tranche 1 — the 11 tractable procs
-> — is complete: `relational.sql` seeds 16 branch-covering tables, 11 case files
-> hold 51 branch-covering cases, `capture-golden.{sh,py}` produces 51 canonical
-> golden files, and `verify-stable.sh` proves them byte-identical across two
-> captures. **Tranche 2** — the 3 temporal procs (`GetCustomer/Supplier/City
-> Updates`: system-versioning + `*_Archive` history + geography) — is the
-> remaining Phase-1 work; it extends the same four files against a harness now
-> proven green.
+> **Phase 1 built in two tranches (ADR-0007), both now complete.** Tranche 1 — the
+> 11 tractable procs — seeds 16 branch-covering tables and 51 golden files.
+> **Tranche 2** — the 3 temporal procs (`GetCustomer/Supplier/CityUpdates`) — is
+> now folded into the same `relational.sql`: the four shared tables are made
+> system-versioned *in place* (migrate-existing-data, fixed-literal history, so it
+> stays deterministic), the lookup dimensions and `*_Archive` history are added,
+> and `geography` is captured as Well-Known-Text (`.STAsText()`) since `FOR JSON`
+> refuses a CLR type. The temp-table procs defeat `describe_first_result_set`
+> (error 11526), so their case files carry an explicit `resultset` transcribed from
+> the proc's own `#...Changes` table. Result: **14 procs, 67 golden files,
+> byte-identical across two captures**; tranche-1 golden is unchanged (the in-place
+> conversion did not leak). See ADR-0007 "Tranche 2 as built".
 
 **Phase-1 exit:** golden exists, is deterministic across re-captures, and was
 produced with zero model involvement. This is the foundation of trust — it must

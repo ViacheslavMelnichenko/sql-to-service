@@ -88,13 +88,18 @@ KEY_MAP = {
     "Warehouse_PackageTypes": "PackageTypeID",
     "Application_People": "PersonID",
     "Application_Cities": "CityID",
-    # Countries/StateProvinces are not seeded in tranche 1 (Cities carries only
-    # ID + name); kept here so the map matches the WWI schema if a later tranche
-    # adds them. Extra keys for absent tables are harmless — KEY_MAP is consulted
-    # per table that is actually present in the relational seed.
     "Application_Countries": "CountryID",
     "Application_StateProvinces": "StateProvinceID",
+    # Tranche-2 lookup dimensions (the temporal Customer/Supplier procs join to them).
+    "Sales_BuyingGroups": "BuyingGroupID",
+    "Sales_CustomerCategories": "CustomerCategoryID",
+    "Purchasing_SupplierCategories": "SupplierCategoryID",
 }
+# geography (Application_Cities.Location) needs no rule here: exported as its
+# Well-Known-Text string ("POINT (-122.3321 47.6062)") it matches neither the ISO-
+# date nor the int-like pattern, so map_value passes it through verbatim — a stable,
+# deterministic string. Whether the service models it as GeoJSON is a CONVERSION
+# decision, not a seed one (ADR-0003); the seed keeps the flat WKT string.
 
 _ISO_DATE = re.compile(
     r"^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?$"

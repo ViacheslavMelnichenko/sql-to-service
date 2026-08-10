@@ -1,0 +1,70 @@
+{
+  "proc": "Integration.GetCityUpdates",
+  "shape": "tabular",
+  "ordered": false,
+  "notes": "System-versioned temporal proc (tranche 2) and the geography case. Three cursors: Countries (excludes @InitialLoadDate 2013-01-01), StateProvinces (excludes it), then Cities (INCLUDES the initial load). Each change-point snapshots the Cities/StateProvinces/Countries joins with FOR SYSTEM_TIME AS OF @ValidFrom; the projected [Valid From]/[Valid To] are the CITY row's own period, so rows can share a [Valid From] -- ordered=false (canonicaliser value-sort keeps golden stable). The output carries a geography column: the proc's final SELECT aliases it `[Location] geography`, so the OUTPUT column name is `geography` (not Location). FOR JSON cannot serialise a CLR type (error 13604), so capture-golden.py projects geography as Well-Known-Text via .STAsText() (e.g. \"POINT (-122.3321 47.6062)\"); the proc itself runs verbatim -- only the read is cast. Seed change-points for city 1 (Seattle, StateProvinceID 1): Countries current 2020-05-01 (archive 2013-01-01, name 'United States of America' -> 'United States'), StateProvinces current 2020-08-01 (archive 2013-01-01, 'Washington Terr.' -> 'Washington'), Cities current 2021-02-01 population 750000 (archive 2013-01-01 population 650000). COALESCE(LatestRecordedPopulation, 0) is exercised as a non-null value throughout; Location is the same point across versions. resultset is transcribed from the proc's #CityChanges CREATE TABLE, except the geography column is named `geography` to match the final SELECT's alias -- describe cannot introspect it (error 11526); INSERT..EXEC (positional) fails loudly if the shape drifts.",
+  "resultset": [
+    {"name": "WWI City ID", "type": "int"},
+    {"name": "City", "type": "nvarchar(50)"},
+    {"name": "State Province", "type": "nvarchar(50)"},
+    {"name": "Country", "type": "nvarchar(50)"},
+    {"name": "Continent", "type": "nvarchar(30)"},
+    {"name": "Sales Territory", "type": "nvarchar(50)"},
+    {"name": "Region", "type": "nvarchar(30)"},
+    {"name": "Subregion", "type": "nvarchar(30)"},
+    {"name": "geography", "type": "geography"},
+    {"name": "Latest Recorded Population", "type": "bigint"},
+    {"name": "Valid From", "type": "datetime2(7)"},
+    {"name": "Valid To", "type": "datetime2(7)"}
+  ],
+  "cases": [
+    {
+      "name": "all-changes",
+      "why": "Window opens before the initial load (2012-01-01), so all three cursors fire: Countries at 2020-05-01, StateProvinces at 2020-08-01, Cities at 2013-01-01 (initial load, included) and 2021-02-01. Exercises every cursor, the initial-load inclusion on the city arm, the geography->WKT read, and the population change.",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2012-01-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2022-01-01T00:00:00"}
+      ]
+    },
+    {
+      "name": "initial-load-excluded",
+      "why": "@LastCutoff is EXACTLY 2013-01-01; the city cursor's strict `> @LastCutoff` drops the 2013-01-01 row -> one fewer row than all-changes. Pins the exclusive lower bound.",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2013-01-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2022-01-01T00:00:00"}
+      ]
+    },
+    {
+      "name": "country-only",
+      "why": "Narrow window (2020-04-15, 2020-05-15] catches only the Countries change at 2020-05-01 ('United States of America' -> 'United States'). Isolates the country cursor.",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2020-04-15T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2020-05-15T00:00:00"}
+      ]
+    },
+    {
+      "name": "stateprovince-only",
+      "why": "Narrow window (2020-07-15, 2020-08-15] catches only the StateProvinces change at 2020-08-01 ('Washington Terr.' -> 'Washington'). Isolates the state-province cursor.",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2020-07-15T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2020-08-15T00:00:00"}
+      ]
+    },
+    {
+      "name": "city-population-change",
+      "why": "Narrow window (2021-01-15, 2021-02-15] catches only the Cities change at 2021-02-01 (population 650000 -> 750000). Isolates the city cursor's non-initial-load arm and the population projection.",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2021-01-15T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2021-02-15T00:00:00"}
+      ]
+    },
+    {
+      "name": "empty-window",
+      "why": "Window (2015-01-01, 2016-01-01] contains no change-point -> empty result.",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2015-01-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2016-01-01T00:00:00"}
+      ]
+    }
+  ]
+}

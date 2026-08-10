@@ -36,8 +36,10 @@ OUT_DIR="${1:-corpus/golden}"
 SVC="mssql"
 DB="WwiSeed"
 
-# The 11 tranche-1 procedures (ADR-0007). The 3 temporal procs (GetCity/Customer/
-# SupplierUpdates) are tranche 2 and are deliberately absent here.
+# All 14 procedures (ADR-0007). The last three are the tranche-2 temporal procs
+# (system-versioned tables + *_Archive history + a geography Location column); the
+# merged relational.sql seeds what they need, and capture-golden.py reads geography
+# as WKT so it survives FOR JSON.
 PROCS=(
   "Website.SearchForCustomers"
   "Website.SearchForSuppliers"
@@ -50,6 +52,9 @@ PROCS=(
   "Integration.GetMovementUpdates"
   "Integration.GetTransactionUpdates"
   "Integration.GetStockHoldingUpdates"
+  "Integration.GetCustomerUpdates"
+  "Integration.GetSupplierUpdates"
+  "Integration.GetCityUpdates"
 )
 
 log() { printf '\033[1;34m[capture]\033[0m %s\n' "$*"; }

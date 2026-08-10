@@ -1,0 +1,59 @@
+{
+  "proc": "Integration.GetSupplierUpdates",
+  "shape": "tabular",
+  "ordered": false,
+  "notes": "System-versioned temporal proc (tranche 2). Two cursors: SupplierCategories (excludes @InitialLoadDate 2013-01-01) then Suppliers (INCLUDES the initial load). Each change-point snapshots the joins with FOR SYSTEM_TIME AS OF @ValidFrom; the projected [Valid From]/[Valid To] are the SUPPLIER row's own period, so rows can share a [Valid From] -- ORDER BY [Valid From] is not a total order, hence ordered=false (canonicaliser value-sort keeps golden stable). Seed change-points for supplier 1: SupplierCategories current 2020-07-01 (archive 2013-01-01), Suppliers current 2021-03-01 postal 30301 (archive 2013-01-01 postal 30300). PrimaryContactPersonID=4 (Dan Supplier), SupplierReference SUP-001, PaymentDays 30. resultset is transcribed verbatim from the proc's #SupplierChanges CREATE TABLE -- describe cannot introspect it (error 11526); INSERT..EXEC fails loudly if it drifts.",
+  "resultset": [
+    {"name": "WWI Supplier ID", "type": "int"},
+    {"name": "Supplier", "type": "nvarchar(100)"},
+    {"name": "Category", "type": "nvarchar(50)"},
+    {"name": "Primary Contact", "type": "nvarchar(50)"},
+    {"name": "Supplier Reference", "type": "nvarchar(20)"},
+    {"name": "Payment Days", "type": "int"},
+    {"name": "Postal Code", "type": "nvarchar(10)"},
+    {"name": "Valid From", "type": "datetime2(7)"},
+    {"name": "Valid To", "type": "datetime2(7)"}
+  ],
+  "cases": [
+    {
+      "name": "all-changes",
+      "why": "Window opens before the initial load (2012-01-01), so both cursors fire: SupplierCategories at 2020-07-01, Suppliers at 2013-01-01 (initial load, included) and 2021-03-01. Exercises both cursors and the initial-load inclusion on the supplier arm.",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2012-01-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2022-01-01T00:00:00"}
+      ]
+    },
+    {
+      "name": "initial-load-excluded",
+      "why": "@LastCutoff is EXACTLY 2013-01-01; the supplier cursor's strict `> @LastCutoff` drops the 2013-01-01 row -> one fewer row than all-changes. Pins the exclusive lower bound.",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2013-01-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2022-01-01T00:00:00"}
+      ]
+    },
+    {
+      "name": "category-only",
+      "why": "Narrow window (2020-06-15, 2020-07-15] catches only the SupplierCategories change at 2020-07-01. Isolates the category cursor.",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2020-06-15T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2020-07-15T00:00:00"}
+      ]
+    },
+    {
+      "name": "supplier-only",
+      "why": "Narrow window (2021-02-15, 2021-03-15] catches only the Suppliers change at 2021-03-01 (postal 30300 -> 30301). Isolates the supplier cursor's non-initial-load arm.",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2021-02-15T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2021-03-15T00:00:00"}
+      ]
+    },
+    {
+      "name": "empty-window",
+      "why": "Window (2015-01-01, 2016-01-01] contains no change-point -> empty result.",
+      "params": [
+        {"name": "LastCutoff", "type": "datetime2", "value": "2015-01-01T00:00:00"},
+        {"name": "NewCutoff", "type": "datetime2", "value": "2016-01-01T00:00:00"}
+      ]
+    }
+  ]
+}
