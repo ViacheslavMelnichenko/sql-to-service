@@ -45,6 +45,15 @@ Size the dataset **from the procedures, by branch coverage**:
 Working targets (derived, not decreed): **~50–200 rows per key table**, **5–8
 param-cases per procedure**, **~80–160 golden records** total across the corpus.
 
+> **Superseded on sizing by [ADR-0007](0007-purpose-built-seed-two-tranches.md).**
+> The purpose-built two-tranche seed settled at **67 golden records** across 14
+> procedures — below the ~80–160 band above, because branch coverage (the actual
+> criterion) turned out to need fewer cases than the early estimate: several procs
+> are covered by 4–5 distinguishing cases, and one zero-parameter proc by a single
+> one. The *principle* here — size by discrimination, prove it with the mutation
+> check — stands unchanged; only the projected count did. 67, not ~120, is the
+> real number.
+
 The proof that the sizing is sufficient is **ADR-0006's mutation check**: if an
 injected bug in a branch is *not* caught, the seed has a hole in that branch and a
 row is added until it is.

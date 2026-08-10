@@ -21,7 +21,7 @@ Navigate with the sidebar, the Back/Next buttons, or the ← / → arrow keys.
 The URL hash tracks the slide, so a link like `demo/index.html#6` opens on a
 specific step.
 
-## The eight steps
+## The ten steps
 
 0. **Prerequisites** — `docker compose up -d` (mssql :11433, mongo :37017)
 1. **Non-circular gate** — the oracle frozen before any model (ADR-0001)

@@ -66,4 +66,6 @@ gives up and records the failure.
 - Why the gate is trustworthy in the first place: `docs/adr/0001-non-circular-gate.md`.
 - Why the differential is proven to have teeth: `docs/adr/0006-mutation-validation.md`
   and `gates/mutation-check.sh`.
-- Where the cap is enforced and the outcome recorded: `evals/harness.py` (Phase 4).
+- Where the cap will be enforced and the outcome recorded: `evals/harness.py`
+  (Phase 4 — planned; the hooks that deliver the in-loop feedback exist today, the
+  across-attempts cap lands with the harness).

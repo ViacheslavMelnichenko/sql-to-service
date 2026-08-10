@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Gate tool — task 3.3. The differential: does the generated service, reading from
-# Mongo, produce byte-identical output to the golden captured from the ORIGINAL
-# T-SQL reading from SQL Server — for every case? This is the gate with teeth
+# Mongo, produce output that matches — value-by-value, after canonicalisation — the
+# golden captured from the ORIGINAL T-SQL reading from SQL Server — for every case?
+# This is the gate with teeth
 # (ADR-0001). It is value-based: both sides pass through corpus/canonicalise.py
 # --ordered (Website.SearchForCustomers has an ORDER BY, so row order is part of
 # the output) before comparison, so representation never masks a real difference.

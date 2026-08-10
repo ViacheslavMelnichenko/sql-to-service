@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Capture golden output for the tranche-1 corpus — the ADR-0001 oracle, produced
+# Capture golden output for the whole corpus — the ADR-0001 oracle, produced
 # with NO model in the room. This is task 1.6.
 #
 # It is the entry point the seed header points at. Three steps, in order:
 #   1. (Re)apply corpus/seed/relational.sql   — the branch-covering seed (ADR-0007).
-#   2. Load the 11 tranche-1 procedures VERBATIM from corpus/procs/*.sql into the
+#   2. Load all 14 procedures VERBATIM from corpus/procs/*.sql into the
 #      seed database — the SAME committed files the analyst subagent reads, so
 #      golden is captured from byte-for-byte the text under conversion.
 #   3. Run corpus/capture-golden.py, which executes every case in corpus/cases/*.json
@@ -72,7 +72,7 @@ log "applying relational seed → $DB"
 run_sql -i /corpus/seed/relational.sql >/dev/null \
   || die "relational.sql failed — the seed does not apply cleanly"
 
-# 2. Load the 11 procs verbatim. DROP IF EXISTS first so a re-run is clean; the
+# 2. Load all 14 procs verbatim. DROP IF EXISTS first so a re-run is clean; the
 #    proc files live under /corpus (the compose read-only mount of ./corpus).
 for full in "${PROCS[@]}"; do
   [ -f "corpus/procs/${full}.sql" ] || die "missing corpus/procs/${full}.sql"

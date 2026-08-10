@@ -17,9 +17,18 @@ This repository is that independent way. It is built **on Claude Code**, using i
 native primitives — subagents, skills, hooks, and tools — so the "AI engineering"
 here is real platform mechanism, not a wrapper script pretending to be an agent.
 
-> **Status:** design-complete, implementation in progress. This README describes
-> the architecture and the discipline around it. Where a number or a result would
-> go, this document says so plainly rather than showing a placeholder.
+> **Status:** design-complete, implementation in progress. Two kinds of number
+> live in this project, and the difference is the whole point:
+> - The **gate results** exist today and are reproducible at $0 with no model call
+>   — one showcase proc passing its differential (5/5 cases), the mutation check
+>   catching 5/5 injected bugs, the oracle stable across 67 golden files. Run
+>   `gates/verify.sh` + `gates/mutation-check.sh` and you regenerate them yourself;
+>   the [walkthrough](https://viacheslavmelnichenko.github.io/sql-to-service/) shows
+>   each one paired with its command.
+> - The **eval numbers** — corpus-wide accuracy, per-proc cost, the failure
+>   taxonomy — do **not** exist yet. They land with the Phase-4 harness
+>   (`evals/harness.py`), and where one would go this document says so plainly
+>   rather than showing a placeholder.
 
 ---
 
@@ -88,9 +97,11 @@ Read it as one sentence:
 
 The gate is the load-bearing idea. The agent's *own* generated tests never pass
 the gate on their own — they could be wrong in the same direction as the code.
-Only the **differential** — the generated service's output compared byte-for-byte
-against the golden output captured before the model existed — has the authority to
-say "this conversion is correct."
+Only the **differential** — the generated service's output compared value-by-value,
+after canonicalisation, against the golden output captured before the model existed
+— has the authority to say "this conversion is correct." (Canonicalisation means
+decimals are rendered at a fixed scale and object keys sorted first, so a cosmetic
+representation difference never masks — or fakes — a real one.)
 
 ---
 

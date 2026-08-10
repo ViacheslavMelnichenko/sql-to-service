@@ -197,6 +197,7 @@
   .econ { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 16px 0 6px; }
   .metric { background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 12px 13px; display: flex; flex-direction: column; gap: 4px; }
   .metric .lbl { font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-3); }
+  .metric .scope { display: inline-block; margin-left: 6px; padding: 1px 6px; border: 1px solid var(--line); border-radius: 999px; font-size: 9px; letter-spacing: .02em; color: var(--ink-2); background: var(--bg); vertical-align: middle; }
   .metric .val { font-size: 25px; font-weight: 700; color: var(--clay-d); line-height: 1.05; font-family: ui-monospace, monospace; }
   .metric .sub { font-size: 11.5px; color: var(--ink-2); line-height: 1.35; }
   table.econ-t { width: 100%; border-collapse: collapse; margin: 10px 0 4px; font-size: 13px; }
@@ -906,11 +907,11 @@ failed:differential 1   ·   flaky 1   ·   failed:retry_cap 0</pre></div>
       <section class="sec">
         <p class="sec-eyebrow">Measured — the free audit</p>
         <h3 class="sec-title">Real local runs, 2026-08-10, zero model calls</h3>
-        <p>These four are <em>facts</em>, captured from the runs shown on the earlier slides. Nothing here is an estimate.</p>
+        <p>These four are <em>facts</em>, captured from the runs shown on the earlier slides. Nothing here is an estimate. <strong>Scope:</strong> the two correctness tiles are the <em>one showcase proc</em> (<code>Website.SearchForCustomers</code>) — not a corpus-wide rate; the oracle-stability tile spans all 67 golden files across the 14 procs.</p>
         <div class="econ">
-          <div class="metric"><span class="lbl">Correctness</span><span class="val">5/5</span><span class="sub"><code>differential</code> vs frozen golden — every showcase case identical after canonicalise. 6/6 unit green.</span></div>
-          <div class="metric"><span class="lbl">Gate has teeth</span><span class="val">5/5</span><span class="sub">Injected one-line bugs all forced the differential red; pristine baseline stayed green.</span></div>
-          <div class="metric"><span class="lbl">Oracle stable</span><span class="val">67/67</span><span class="sub">Golden files byte-identical across two independent captures — deterministic seed.</span></div>
+          <div class="metric"><span class="lbl">Correctness <span class="scope">1 proc</span></span><span class="val">5/5</span><span class="sub"><code>differential</code> vs frozen golden — every showcase case identical after canonicalise. 6/6 unit green.</span></div>
+          <div class="metric"><span class="lbl">Gate has teeth <span class="scope">1 proc</span></span><span class="val">5/5</span><span class="sub">Injected one-line bugs all forced the differential red; pristine baseline stayed green.</span></div>
+          <div class="metric"><span class="lbl">Oracle stable <span class="scope">14 procs</span></span><span class="val">67/67</span><span class="sub">Golden files byte-identical across two independent captures — deterministic seed.</span></div>
           <div class="metric"><span class="lbl">Audit cost</span><span class="val">$0.00</span><span class="sub">verify ~53s + mutation ~2m10s. Zero tokens: the whole audit runs with no model.</span></div>
         </div>
       </section>
@@ -1573,11 +1574,12 @@ failed:differential 1   ·   flaky 1   ·   failed:retry_cap 0</pre></div>
       <section class="sec">
         <p class="sec-eyebrow">Виміряно — безкоштовний аудит</p>
         <h3 class="sec-title">Реальні локальні запуски, 2026-08-10, нуль викликів моделі</h3>
+        <p><strong>Обсяг:</strong> дві плитки правильності — це <em>одна showcase-процедура</em> (<code>Website.SearchForCustomers</code>), а не показник по всьому корпусу; плитка стабільності оракула охоплює всі 67 golden-файлів по 14 процедурах.</p>
         <p>Ці чотири — <em>факти</em>, захоплені із запусків, показаних на попередніх слайдах. Ніщо тут не є оцінкою.</p>
         <div class="econ">
-          <div class="metric"><span class="lbl">Правильність</span><span class="val">5/5</span><span class="sub"><code>differential</code> проти замороженого golden — кожен showcase-кейс ідентичний після canonicalise. 6/6 unit зелені.</span></div>
-          <div class="metric"><span class="lbl">Перевірка з зубами</span><span class="val">5/5</span><span class="sub">Впорснуті однорядкові баги всі зробили differential червоним; незаплямований baseline лишився зеленим.</span></div>
-          <div class="metric"><span class="lbl">Оракул стабільний</span><span class="val">67/67</span><span class="sub">Golden-файли побайтно ідентичні у двох незалежних захопленнях — детермінований seed.</span></div>
+          <div class="metric"><span class="lbl">Правильність <span class="scope">1 проц.</span></span><span class="val">5/5</span><span class="sub"><code>differential</code> проти замороженого golden — кожен showcase-кейс ідентичний після canonicalise. 6/6 unit зелені.</span></div>
+          <div class="metric"><span class="lbl">Перевірка з зубами <span class="scope">1 проц.</span></span><span class="val">5/5</span><span class="sub">Впорснуті однорядкові баги всі зробили differential червоним; незаплямований baseline лишився зеленим.</span></div>
+          <div class="metric"><span class="lbl">Оракул стабільний <span class="scope">14 проц.</span></span><span class="val">67/67</span><span class="sub">Golden-файли побайтно ідентичні у двох незалежних захопленнях — детермінований seed.</span></div>
           <div class="metric"><span class="lbl">Вартість аудиту</span><span class="val">$0.00</span><span class="sub">verify ~53s + mutation ~2m10s. Нуль токенів: увесь аудит працює без моделі.</span></div>
         </div>
       </section>

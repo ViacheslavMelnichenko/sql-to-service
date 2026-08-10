@@ -37,12 +37,22 @@ contradiction or committed mistake spends that credibility fast.
 
 | # | Task | Target file(s) | Status |
 |---|------|----------------|--------|
-| A.1 | Fix the `byte-for-byte` misstatement | `README.md`, `docs/architecture.md` | todo |
-| A.2 | Reconcile README "no numbers" vs demo "these are facts" | `README.md`, `demo/index.html` | todo |
-| A.3 | Present→future tense for the unbuilt harness | `README.md`, `docs/architecture.md`, `pipeline/retry.md`, `evals/PREREGISTRATION.md` | todo |
-| A.4 | Scope-label the demo metric tiles as "showcase proc" | `demo/index.html` | todo |
-| A.5 | Repo hygiene: delete committed mistakes | `corpus/_bak;C`, `.claude/hooks/`, `.gitignore` | todo |
-| A.6 | Reconcile the number/count drifts | `docs/adr/0002-*.md`, `corpus/capture-golden.sh`, `demo/README.md` | todo |
+| A.1 | Fix the `byte-for-byte` misstatement | `README.md`, `gates/differential.sh`, `gates/verify.sh` | done |
+| A.2 | Reconcile README "no numbers" vs demo "these are facts" | `README.md`, `demo/index.html` | done |
+| A.3 | Present→future tense for the unbuilt harness | `docs/architecture.md`, `pipeline/retry.md`, `evals/PREREGISTRATION.md` | done |
+| A.4 | Scope-label the demo metric tiles as "showcase proc" | `demo/index.html` | done |
+| A.5 | Repo hygiene: delete committed mistakes | `corpus/_bak;C`, `.claude/hooks/guard_path.py` | done |
+| A.6 | Reconcile the number/count drifts | `docs/adr/0002-*.md`, `corpus/capture-golden.sh`, `demo/README.md` | done |
+
+**Tier A closed.** Exit notes: A.1 — the differential is now described as
+value-by-value after canonicalisation everywhere it is judged; `byte-identical`
+survives only in the golden *stability* check, where it is literally true. A.5 —
+`_bak;C` removed; the unwired `guard_path.py` removed (the wired hook is
+`guard-path.sh`, per `.claude/settings.json`); `__pycache__`/`.pytest_cache` were
+already `.gitignore`d and untracked. A.6 — real golden count is **67**; ADR-0002
+now carries a superseded-by-0007 annotation, and `GetStockHoldingUpdates`' single
+case was left as-is (its own `notes` already justify one case for a zero-parameter
+proc).
 
 ### A.1 — Fix the `byte-for-byte` misstatement
 **Problem.** `README.md:91` (and the diagram around `:78`) says the differential

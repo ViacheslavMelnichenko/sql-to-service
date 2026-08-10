@@ -12,8 +12,10 @@ reported — that is the point of writing it down first.
 
 ## Fixed before the run
 
-- **Model + version:** `<model-id, dated>` — pinned in `evals/METHOD.md`, frozen
-  before run-001.
+- **Model + version:** Claude Opus (the `claude-opus` family, run via Claude Code
+  headless). The exact dated snapshot id is captured from the first invocation and
+  frozen into `evals/METHOD.md` at run-001 — recorded, not chosen after the fact.
+  Until then this is the intended model, not a pinned one.
 - **Sampling:** temperature and top-p fixed and recorded; same for every run.
 - **Corpus:** the procedures selected by `corpus/SELECTION.md`, frozen before the
   run — no procedure added or removed after seeing a result.

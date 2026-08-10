@@ -124,11 +124,16 @@ And the gate's authority is **proven, not asserted**: `mutation-check.sh`
 
 ## 5. The harness, measuring honestly
 
-The harness runs Claude Code **headless** (`claude -p …`) once per procedure and
-records, per proc: the differential verdict, retries used, tokens, and cost. Across
-`k=3` runs it reports a **distribution**, flags `flaky` procedures, and builds a
+> **Status:** planned (Phase 4). The gate below (`verify.sh`, `mutation-check.sh`)
+> exists and runs today; the measurement harness that drives the agent over the
+> corpus does not yet — this section describes what it will do, in the tense of a
+> design, not a finished run.
+
+The harness will run Claude Code **headless** (`claude -p …`) once per procedure and
+record, per proc: the differential verdict, retries used, tokens, and cost. Across
+`k=3` runs it will report a **distribution**, flag `flaky` procedures, and build a
 **failure taxonomy** — because a result with no failures is a finding to
-investigate, not a win. A naive single-prompt run is kept as the **control
+investigate, not a win. A naive single-prompt run will be kept as the **control
 baseline**.
 
 The one artifact that cannot be faked is the **analysis paragraph** in
