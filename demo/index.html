@@ -165,6 +165,20 @@
   .phase + .phase::before { content: "›"; position: absolute; left: -8px; top: 50%; transform: translateY(-50%); color: var(--ink-3); font-size: 18px; line-height: 1; }
   @media (max-width: 900px) { .roadmap { grid-template-columns: 1fr 1fr; } .phase + .phase::before { display: none; } }
 
+  /* ---- economics metric cards (the summary slide) ---- */
+  .econ { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 16px 0 6px; }
+  .metric { background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 12px 13px; display: flex; flex-direction: column; gap: 4px; }
+  .metric .lbl { font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-3); }
+  .metric .val { font-size: 25px; font-weight: 700; color: var(--clay-d); line-height: 1.05; font-family: ui-monospace, monospace; }
+  .metric .sub { font-size: 11.5px; color: var(--ink-2); line-height: 1.35; }
+  table.econ-t { width: 100%; border-collapse: collapse; margin: 10px 0 4px; font-size: 13px; }
+  table.econ-t th, table.econ-t td { border-top: 1px solid var(--line); padding: 7px 9px; text-align: right; }
+  table.econ-t th:first-child, table.econ-t td:first-child { text-align: left; }
+  table.econ-t th { color: var(--ink-3); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; font-weight: 600; border-top: none; }
+  table.econ-t td.n { font-family: ui-monospace, monospace; color: var(--ink); }
+  table.econ-t tr.tot td { color: var(--clay-d); font-weight: 700; border-top: 2px solid var(--clay-line); }
+  @media (max-width: 900px) { .econ { grid-template-columns: 1fr 1fr; } }
+
   /* ---- light fallback: only when the OS explicitly asks for light ----
      Dark is the default (the :root above). This restores the original warm-ivory
      palette for viewers whose system is set to light. Same variables, flipped. */
@@ -359,11 +373,16 @@ docker compose up -d          <span class="c"># mssql → :11433 · mongo → :3
           </ul></div>
       </div>
       <p>The separation is the point: the <code>test-author</code> can't inherit the <code>implementer</code>'s blind spot because it never sees what was convenient to write. Skills are <em>versioned files</em> the reviewer checks against — not an ephemeral prompt.</p>
-      <div class="card check"><h3><span class="pill">CHECK</span> They're real, separated definitions</h3>
+      <div class="card check"><h3><span class="pill">CHECK</span> They're real, separated definitions — with real output</h3>
 <pre>ls .claude/agents/          <span class="c"># analyst · implementer · test-author · reviewer</span>
-ls .claude/skills/          <span class="c"># four SKILL.md standards</span>
-cat generated/Website.SearchForCustomers.spec.md   <span class="c"># the analyst's output</span>
-cat generated/Website.SearchForCustomers.review.md <span class="c"># the reviewer's verdict</span></pre></div>
+<span class="g">analyst.md  implementer.md  test-author.md  reviewer.md</span>
+
+cat generated/Website.SearchForCustomers.review.md   <span class="c"># the reviewer's verdict</span>
+<span class="c"># Verdict: <b>PASS</b></span>
+<span class="c">#  - Builds: both .csproj build, 0 errors on .NET 10</span>
+<span class="c">#  - Tests green: 6/6 (5 golden cases + 1 empty-object shape)</span>
+<span class="c">#  - Oracle intact: `git status corpus/` clean — nothing touched to pass</span></pre>
+      <p class="muted" style="margin:6px 0 0"><strong>What you get:</strong> the analyst's <code>.spec.md</code> is prose intent (parameters, joins, filtering) with <em>no code</em>; the reviewer's <code>.review.md</code> is a skill-by-skill verdict that ends in <code>PASS</code>/<code>FAIL</code> and confirms the oracle was never edited. Four files each side, one job each.</p></div>
     </section>
 
     <!-- 5b · the artifact chain -->
@@ -475,8 +494,15 @@ exit=<b>2</b>
         <div class="card"><h3 style="color:var(--clay-d)">Across attempts · the harness</h3><p style="margin:0">The <strong>cap of 2</strong> lives here, not in the hooks — hooks have no memory. After the cap, the harness stops and records an <em>honest failure</em>.</p></div>
       </div>
       <p>The cap is what turns "never lies" into "never lies <em>and</em> always terminates." A proc that needed three tries is never silently upgraded to a pass. And a <code>guard-path</code> block is a <em>refusal</em>, not a retry — the fix is to write a different file, not to try the same illegal write again.</p>
-      <div class="card check"><h3><span class="pill">CHECK</span> Read the protocol</h3>
-<pre>cat pipeline/retry.md</pre></div>
+      <div class="card check"><h3><span class="pill">CHECK</span> What a fed-back failure looks like</h3>
+<pre>cat pipeline/retry.md   <span class="c"># the protocol; cap lives in the harness, not the hooks</span>
+
+<span class="c"># a Stop-hook correction the agent gets back mid-turn:</span>
+<span class="k">[differential]</span> <b>FAIL</b>: 1/5 cases differ from golden
+  <span class="g">✓</span> contact-name-match      <span class="g">✓</span> null-contact-name-match
+  <span class="k">✗ top-1-pagination</span>       DIFFERS  <span class="c"># expected Tailspin, got Wingtip</span>
+<span class="c"># → agent edits generated/…Service.cs and retries (attempt 2 of 2)</span></pre>
+      <p class="muted" style="margin:6px 0 0"><strong>What you get:</strong> a failure never arrives as a bare "no" — it arrives as the exact differing cases, which is what the agent acts on. After the cap the harness stops re-prompting and records the proc as <code>failed:differential</code> with its last output — an honest failure, not a silent pass.</p></div>
     </section>
 
     <!-- 10 -->
@@ -490,11 +516,44 @@ exit=<b>2</b>
 bash gates/verify.sh
 <span class="c"># re-run the agent end to end (PAID, opt-in):</span>
 ./run.sh</pre></div>
-      <div class="card check"><h3><span class="pill">CHECK</span> Honest reporting, failures included</h3>
-<pre><span class="c"># k=3 runs per proc → distribution, flaky flags, $ per proc</span>
-<span class="c"># Table 1: headline accuracy + cost</span>
-<span class="c"># Table 2: failure taxonomy — a run with zero failures is a</span>
-<span class="c">#          finding to investigate, not a win</span></pre></div>
+      <div class="card check"><h3><span class="pill">CHECK</span> The shape of what it reports <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink-3)">(illustrative — no run has happened yet)</span></h3>
+<pre><span class="c"># Table 1 — headline: cleared_within_cap + cost, k=3</span>
+proc                              cleared/3   outcome            $/proc
+<span class="g">Website.SearchForCustomers        3/3         cleared            2.10</span>
+<span class="g">Integration.GetCustomerUpdates    3/3         cleared            1.98</span>
+<span class="k">Integration.GetOrderUpdates       2/3         flaky              2.34</span>
+<span class="k">Integration.GetStockItemUpdates   0/3         failed:differential 2.31</span>
+
+<span class="c"># Table 2 — failure taxonomy (zero failures = a finding, not a win)</span>
+failed:differential 1   ·   flaky 1   ·   failed:retry_cap 0</pre>
+      <p class="muted" style="margin:6px 0 0"><strong>What you get:</strong> a <em>distribution</em>, not a single number — <code>cleared/3</code> exposes flakiness a point estimate would hide — plus a dollar cost per proc and an explicit failure taxonomy. The figures here are placeholders showing the table shape; the real numbers land when <code>evals/harness.py</code> runs. The <strong>economics of those numbers</strong> is the next slide.</p></div>
+    </section>
+
+    <!-- 10b · the AI economics summary -->
+    <section class="slide" data-title="AI economics">
+      <p class="kicker">The metrics that decide "is this worth it"</p>
+      <h2 class="title">Accuracy <em>and</em> cost — the top-line numbers</h2>
+      <p class="lede">An AI migration is judged on two axes at once: <strong>how often it is right</strong> and <strong>what each right answer costs</strong>. A high pass-rate that quietly burned the budget is not a result. These are the metrics the harness reports.</p>
+
+      <div class="econ">
+        <div class="metric"><span class="lbl">Primary accuracy</span><span class="val">cleared/k</span><span class="sub"><code>cleared_within_cap</code> — passed build + unit + differential inside the retry cap, byte-identical output. k=3 per proc.</span></div>
+        <div class="metric"><span class="lbl">Tokens / attempt</span><span class="val">~76k</span><span class="sub">≈ 60k input + 16k output for the four-stage pipeline on one proc (illustrative).</span></div>
+        <div class="metric"><span class="lbl">Cost / proc</span><span class="val">$2.10</span><span class="sub">Per proc across k=3 attempts, cold-cache (so cache warmth can't fake an improvement).</span></div>
+        <div class="metric"><span class="lbl">Cost / cleared</span><span class="val">$2.63</span><span class="sub">Total run cost ÷ procedures that actually cleared — the number that matters for scale.</span></div>
+      </div>
+
+      <p style="margin:14px 0 4px"><strong>The cost math, shown — Claude Opus 5 at $5&thinsp;/&thinsp;$25 per 1M tokens (in&thinsp;/&thinsp;out):</strong></p>
+      <table class="econ-t">
+        <tr><th>Line</th><th>Tokens</th><th>Rate /1M</th><th>Cost</th></tr>
+        <tr><td>Input, one attempt</td><td class="n">60,000</td><td class="n">$5</td><td class="n">$0.30</td></tr>
+        <tr><td>Output, one attempt</td><td class="n">16,000</td><td class="n">$25</td><td class="n">$0.40</td></tr>
+        <tr><td>Per proc, k=3 attempts</td><td class="n">×3</td><td class="n">—</td><td class="n">$2.10</td></tr>
+        <tr class="tot"><td>Run of 10 procs · 8 cleared</td><td class="n">~2.3M</td><td class="n">—</td><td class="n">$21.00 → $2.63/cleared</td></tr>
+      </table>
+
+      <div class="warn"><strong>These figures are illustrative, not measured.</strong> Phase 4 has not run — <code>evals/results/</code> is empty and <code>PREREGISTRATION.md</code> deliberately fixes the <em>method</em>, not the numbers. The worked example above shows how the harness will turn per-proc tokens into a cost-per-cleared figure; the real values replace them when <code>harness.py</code> runs. Per repo policy, the magnitudes are the demo's own and stand in for no real engagement.</div>
+
+      <p class="muted" style="margin:6px 0 0">Why <code>cost / cleared</code> and not <code>cost / attempt</code>: failed and flaky procs still spend tokens, so the honest unit price folds their cost into the ones that succeeded. That is the number you multiply by a real backlog of 500 procedures to decide whether the harness pays for itself.</p>
     </section>
 
     <!-- 11 -->
