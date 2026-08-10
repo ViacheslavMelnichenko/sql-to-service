@@ -415,6 +415,11 @@ bash gates/verify.sh
     if (e.key === 'ArrowRight' || e.key === 'PageDown') go(i + 1);
     if (e.key === 'ArrowLeft' || e.key === 'PageUp') go(i - 1);
   });
+  // Keep in sync with the URL hash so browser back/forward and manual #N edits work.
+  window.addEventListener('hashchange', function () {
+    var h = parseInt((location.hash || '#0').slice(1), 10);
+    if (!isNaN(h) && h !== i) go(h);
+  });
 
   var start = parseInt((location.hash || '#0').slice(1), 10);
   go(isNaN(start) ? 0 : start);
