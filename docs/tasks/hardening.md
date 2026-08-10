@@ -159,8 +159,8 @@ the single highest-leverage item in the whole tracker.
 |---|------|----------------|--------|
 | B.1 | De-hardcode the gates over the corpus | `gates/differential.sh`, `gates/mutation-check.sh`, `gates/build.sh`, `gates/verify.sh`, `generated/runners.json` | done |
 | B.2 | Convert 2–3 more procs, incl. one decimal-bearing | `generated/GetStockHoldingUpdatesService.cs` (+ csproj/runner/test) | done |
-| B.3 | Minimal real eval harness + one honest result | `evals/harness.py`, `run.sh`, `evals/results/run-001.json` | blocked |
-| B.4 | Naive single-prompt baseline (the control) | `evals/results/baseline.json` | blocked |
+| B.3 | Minimal real eval harness + one honest result | `evals/harness.py`, `run.sh`, `.github/workflows/eval-live.yml`, `evals/results/run-001.json` | blocked (operator dispatch) |
+| B.4 | Naive single-prompt baseline (the control) | `evals/results/baseline.json` | blocked (operator dispatch) |
 | B.5 | Wire the gates into CI as required checks | `.github/workflows/verify.yml` | done |
 | B.6 | Gate-time seed-identity assertion | `gates/differential.sh` (or `verify.sh`) | done |
 
@@ -221,16 +221,32 @@ pre-registration promises (canonical produced output vs canonical golden), plus 
 `--dry-run` exercises every deterministic part against the committed services and
 is **green (2/2, both hashes identical)** — this is the scaffold proof, gitignored
 and explicitly not citable as a result. **What is missing is the one thing that
-needs a model: the live `run-001.json`.** The environment's safety classifier
-blocks launching a nested headless agent loop with elevated permissions unless the
-operator explicitly authorises it (it spends real API budget and drops per-action
-gating), so `run.sh --live` gates the run behind a typed confirmation / `EVAL_LIVE_OK`
-and the file is produced by a single authorised command once that environment is
-available. Fabricating it was never an option — the pre-registration forbids
-retrofitted numbers, and a composed result is the exact fraud this repo polices.
-The tail of B.3 (revert A.3 to present tense, replace the demo's illustrative
-Phase-4 table) stays parked until the real numbers exist. B.4 (baseline) rides the
-same plumbing and is blocked on the same opt-in.
+needs a model: the live `run-001.json`.**
+
+**Two concrete blockers on the live path were diagnosed and closed (2026-08-10).**
+An in-session attempt to drive the headless agent produced a *false* "2/3 cleared"
+result — every proc at zero tokens, zero cost, null snapshot — which was quarantined
+(deleted), not committed: it was a dry-run wearing a live label, the exact composed
+result the pre-registration forbids. Root cause, two layers: (1) the harness passed
+`--model claude-opus-4-8-gateway`, the internal gateway id, which the CLI rejects, so
+every attempt failed at zero tokens; fixed by pinning the CLI alias `opus`
+(`EVAL_MODEL`-overridable). (2) The real blocker underneath: a headless `claude -p`
+inherits no interactive `az login`, so the gateway's azureADTokenProvider
+(ChainedTokenCredential) had no credential and returned `api_error`. Fixed by
+authenticating as a service principal via EnvironmentCredential
+(`AZURE_CLIENT_ID`/`TENANT_ID`/`CLIENT_SECRET`), boilerplate in `.env.example`,
+pulled at job time from Infisical.
+
+**The live run now runs as authenticated CI, not on a laptop.** A new manual-only
+`.github/workflows/eval-live.yml` fetches the service principal from Infisical,
+probes headless auth before spending a cent, drives the real agent through the gate,
+and uploads `run-001.json` as an artifact for a human to review and commit. This is
+the honest way to get the number: produced by a logged, authenticated job, not
+typed. **B.3/B.4 are now blocked only on the operator** configuring the Infisical
+machine-identity secrets in the repo and dispatching the workflow — nothing left to
+build. The tail of B.3 (revert A.3 to present tense, replace the demo's illustrative
+Phase-4 table, fill `PREREGISTRATION.md:15` with the captured snapshot) stays parked
+until that artifact exists. B.4 (baseline) rides the same plumbing and dispatch.
 
 **B.6 done.** `gates/differential.sh` now, right after `seed-mongo.sh` regenerates
 `relational.json`, diffs the fresh export against the committed copy the golden was
