@@ -1,0 +1,45 @@
+# Publishes the demo/ walkthrough to GitHub Pages.
+#
+# The deck (demo/index.html) is a single self-contained page — inline CSS/JS,
+# no build step, no external assets — so "building" the site is just uploading
+# the demo/ folder as the Pages artifact. demo/ becomes the site root, so the
+# published URL lands straight on the deck:
+#   https://<owner>.github.io/sql-to-service/
+#
+# One-time setup (cannot be done from a workflow): in the repo,
+#   Settings → Pages → Build and deployment → Source: GitHub Actions.
+# After that, every push to main that touches demo/ republishes.
+name: pages
+
+on:
+  push:
+    branches: [main]
+    paths: ['demo/**', '.github/workflows/pages.yml']
+  workflow_dispatch: {}
+
+# Pages needs these; the token is read-only elsewhere.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never cancel an in-flight deploy; let one publish finish before the next.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - name: Upload demo/ as the site root
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: demo
+      - id: deployment
+        uses: actions/deploy-pages@v4
