@@ -5,6 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="color-scheme" content="dark light" />
 <title>sql-to-service — a guided walkthrough</title>
+<script>
+  /* Set the pinned theme/lang before first paint so there is no flash.
+     Theme: only pin data-theme when the viewer chose one; leaving it unset lets
+     the OS preference drive (:root default = dark, media query = light). */
+  (function () {
+    try {
+      var t = localStorage.getItem('s2s-theme');
+      if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      var l = localStorage.getItem('s2s-lang');
+      document.documentElement.setAttribute('lang', l === 'uk' ? 'uk' : 'en');
+    } catch (e) {}
+  })();
+</script>
 <style>
   /* ---- claude.ai-flavoured palette: warm charcoal, clay accent, light ink ----
      Dark is the DEFAULT theme. A viewer whose OS explicitly prefers light gets
@@ -179,11 +192,18 @@
   table.econ-t tr.tot td { color: var(--clay-d); font-weight: 700; border-top: 2px solid var(--clay-line); }
   @media (max-width: 900px) { .econ { grid-template-columns: 1fr 1fr; } }
 
-  /* ---- light fallback: only when the OS explicitly asks for light ----
-     Dark is the default (the :root above). This restores the original warm-ivory
-     palette for viewers whose system is set to light. Same variables, flipped. */
+  /* ---- light palette ----
+     Dark is the default (the :root above). The warm-ivory light palette is applied
+     in two cases, both listing the same variables:
+       1. the OS asks for light AND the viewer has not pinned a theme
+          (:root:not([data-theme])), and
+       2. the viewer explicitly picked light with the toggle (html[data-theme=light]).
+     A pinned data-theme always wins over the OS: dark is pinned via the :root
+     defaults (the media query is scoped away by :not([data-theme])), light via the
+     attribute block below. The <head> sets data-theme before first paint, so there
+     is no flash. */
   @media (prefers-color-scheme: light) {
-    :root {
+    :root:not([data-theme]) {
       --paper:   #faf9f5;
       --paper-2: #f2f0e9;
       --card:    #ffffff;
@@ -209,6 +229,40 @@
       --shadow:  0 1px 2px rgba(31,30,29,.06), 0 8px 30px rgba(31,30,29,.07);
     }
   }
+  html[data-theme="light"] {
+    --paper:   #faf9f5;
+    --paper-2: #f2f0e9;
+    --card:    #ffffff;
+    --ink:     #1f1e1d;
+    --ink-2:   #55524c;
+    --ink-3:   #86817a;
+    --clay:    #cc785c;
+    --clay-d:  #b4593d;
+    --line:    #e7e3d9;
+    --good:    #4f7a52;
+    --good-bg: #eef4ee;
+    --warn:    #9a6a1c;
+    --warn-bg: #f7efdd;
+    --warn-fg: #6b4e14;
+    --code-bg: #1f1e1d;
+    --code-fg: #f0ede4;
+    --code-dim:#a7a299;
+    --hover:   #eae7dd;
+    --pill-do: #f6e7e0;
+    --tint:    #fbf3ef;
+    --clay-line:#e6d5cc;
+    --foot-grad: linear-gradient(180deg, rgba(250,249,245,0), var(--paper) 40%);
+    --shadow:  0 1px 2px rgba(31,30,29,.06), 0 8px 30px rgba(31,30,29,.07);
+  }
+
+  /* ---- header toolbar: theme + language toggles ---- */
+  .bar { display: flex; align-items: center; gap: 8px; margin: 18px 0 2px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; background: var(--card); }
+  .seg button { border: 0; background: transparent; color: var(--ink-2); font: inherit; font-size: 12px; padding: 5px 10px; cursor: pointer; line-height: 1.4; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button.on { background: var(--clay); color: #fff; }
+  .seg button:not(.on):hover { background: var(--hover); color: var(--ink); }
+  .seg .lbl { color: var(--ink-3); font-size: 11px; padding: 0 4px 0 8px; align-self: center; letter-spacing: .04em; text-transform: uppercase; }
 </style>
 </head>
 <body>
@@ -226,8 +280,21 @@
 
   <main id="stage">
 
+    <div class="bar">
+      <span class="seg" role="group" aria-label="Theme">
+        <span class="lbl" data-t="theme">Theme</span>
+        <button id="th-light" type="button">Light</button>
+        <button id="th-dark" type="button">Dark</button>
+      </span>
+      <span class="seg" role="group" aria-label="Language">
+        <span class="lbl">Lang</span>
+        <button id="lang-en" type="button">ENG</button>
+        <button id="lang-uk" type="button">UA</button>
+      </span>
+    </div>
+
     <!-- 0 -->
-    <section class="slide" data-title="Overview">
+    <section class="slide" data-lang="en" data-title="Overview">
       <p class="kicker">The one-sentence version</p>
       <h2 class="title">Making an unreliable AI trustworthy on a real migration</h2>
       <p class="lede">Converting legacy T-SQL stored procedures into a .NET&nbsp;+&nbsp;MongoDB service is the <em>vehicle</em>. The point is the harness around it: an independent oracle that catches the model when it is confidently wrong, and measurement that proves it did.</p>
@@ -242,7 +309,7 @@
     </section>
 
     <!-- 1 -->
-    <section class="slide" data-title="The map">
+    <section class="slide" data-lang="en" data-title="The map">
       <p class="kicker">Orientation</p>
       <h2 class="title">What lives where</h2>
       <p class="lede">The repo is designed to be judged <em>without running it</em>. Follow one conversion end to end, entirely in committed files.</p>
@@ -261,7 +328,7 @@
     </section>
 
     <!-- 1b · the big picture before the step-by-step -->
-    <section class="slide" data-title="Big picture">
+    <section class="slide" data-lang="en" data-title="Big picture">
       <p class="kicker">Orientation · read this before the steps</p>
       <h2 class="title">The whole idea in four moves</h2>
       <p class="lede">The steps that follow go deep, one command at a time. Before that, here is the shape of the entire system — <strong>what happens, in what order, and where in the repo to look for each part.</strong></p>
@@ -299,7 +366,7 @@
     </section>
 
     <!-- 2 -->
-    <section class="slide" data-title="Prerequisites">
+    <section class="slide" data-lang="en" data-title="Prerequisites">
       <p class="kicker">Step 0</p>
       <h2 class="title">Prerequisites &amp; standing up the engines</h2>
       <p class="lede">Two containers on deliberately non-standard ports, plus a host Python and .NET 10. Nothing here calls a model.</p>
@@ -317,7 +384,7 @@ docker compose up -d          <span class="c"># mssql → :11433 · mongo → :3
     </section>
 
     <!-- 3 -->
-    <section class="slide" data-title="Non-circular gate">
+    <section class="slide" data-lang="en" data-title="Non-circular gate">
       <p class="kicker">Step 1 · The load-bearing idea · ADR-0001</p>
       <h2 class="title">The oracle is frozen before the AI exists</h2>
       <p class="lede">Every "the AI tested its own work" demo fails the same way: the model writes the code <em>and</em> the tests, so both encode the same misunderstanding and agree while both are wrong.</p>
@@ -335,7 +402,7 @@ docker compose up -d          <span class="c"># mssql → :11433 · mongo → :3
     </section>
 
     <!-- 4 -->
-    <section class="slide" data-title="Mechanical seed">
+    <section class="slide" data-lang="en" data-title="Mechanical seed">
       <p class="kicker">Step 2 · ADR-0003</p>
       <h2 class="title">The Mongo side is seeded mechanically</h2>
       <p class="lede">A subtle way to cheat would be to hand-fit the MongoDB documents so the generated service looks right. So the Mongo seed is a <strong>pure function of the relational seed</strong>: one table → one collection, columns verbatim, written by fixed code before any conversion.</p>
@@ -352,7 +419,7 @@ docker compose up -d          <span class="c"># mssql → :11433 · mongo → :3
     </section>
 
     <!-- 5 -->
-    <section class="slide" data-title="Subagents & skills">
+    <section class="slide" data-lang="en" data-title="Subagents & skills">
       <p class="kicker">Step 3 · ADR-0004 · the four primitives</p>
       <h2 class="title">The AI works in stages, armed with skills</h2>
       <p class="lede">This is where "AI engineering" stops being a slogan. Each stage is a real Claude Code mechanism — open <code>.claude/</code> and you recognise your own tools.</p>
@@ -386,7 +453,7 @@ cat generated/Website.SearchForCustomers.review.md   <span class="c"># the revie
     </section>
 
     <!-- 5b · the artifact chain -->
-    <section class="slide" data-title="The pipeline">
+    <section class="slide" data-lang="en" data-title="The pipeline">
       <p class="kicker">Step 4 · ADR-0001 + 0004 · how an artifact moves</p>
       <h2 class="title">One procedure, four stages, one artifact each</h2>
       <p class="lede">This is the whole pipeline on one screen. Each stage has a <strong>scoped tool set</strong> and produces <strong>exactly one file</strong>; the next stage consumes it. The tool scoping isn't decoration — it's what makes the separation enforceable rather than aspirational.</p>
@@ -423,7 +490,7 @@ cat generated/Website.SearchForCustomers.review.md   <span class="c"># the revie
     </section>
 
     <!-- 6 -->
-    <section class="slide" data-title="The gates">
+    <section class="slide" data-lang="en" data-title="The gates">
       <p class="kicker">Step 5 · ADR-0005 · the deterministic judge</p>
       <h2 class="title">Run the gate — no model required</h2>
       <p class="lede">Four POSIX-sh tools, callable by a hook, a human, or CI. <code>verify.sh</code> chains them and reproduces the verdict with zero model calls — this is the audit.</p>
@@ -449,7 +516,7 @@ Passed!  - Failed: 0, <b>Passed: 6</b>, Skipped: 0, Total: 6
     </section>
 
     <!-- 7 -->
-    <section class="slide" data-title="In-loop hooks">
+    <section class="slide" data-lang="en" data-title="In-loop hooks">
       <p class="kicker">Step 6 · the gates, wired into the agent loop</p>
       <h2 class="title">Hooks gate every transition automatically</h2>
       <p class="lede">Standalone gates are the audit; hooks are what make the loop <em>self-correcting</em>. They live in <code>.claude/settings.json</code> and feed failures straight back via the exit-2 convention.</p>
@@ -472,7 +539,7 @@ exit=<b>2</b>
     </section>
 
     <!-- 8 -->
-    <section class="slide" data-title="Proven teeth">
+    <section class="slide" data-lang="en" data-title="Proven teeth">
       <p class="kicker">Step 7 · ADR-0006 · mandatory</p>
       <h2 class="title">Prove the gate has teeth</h2>
       <p class="lede">A differential that has never been shown to <em>fail</em> on a wrong conversion is an untested gate — its green is worth nothing. So we inject known bugs and require the gate to catch every one.</p>
@@ -494,7 +561,7 @@ exit=<b>2</b>
     </section>
 
     <!-- 9 -->
-    <section class="slide" data-title="Retry protocol">
+    <section class="slide" data-lang="en" data-title="Retry protocol">
       <p class="kicker">Step 8 · pipeline/retry.md</p>
       <h2 class="title">When a gate says "no"</h2>
       <p class="lede">A failure has to reach the agent as a correction it can act on — not a silent dead end. The error path is split into two halves on purpose.</p>
@@ -515,7 +582,7 @@ exit=<b>2</b>
     </section>
 
     <!-- 10 -->
-    <section class="slide" data-title="Measure (paid)">
+    <section class="slide" data-lang="en" data-title="Measure (paid)">
       <p class="kicker">Step 9 · Phase 4 · optional &amp; paid</p>
       <h2 class="title">Let the real agent run — and measure it</h2>
       <p class="lede">Everything so far ran with no model calls. The last step is the opt-in, paid one: run Claude Code headless over the corpus and collect accuracy <em>and</em> cost from real executions.</p>
@@ -539,7 +606,7 @@ failed:differential 1   ·   flaky 1   ·   failed:retry_cap 0</pre>
     </section>
 
     <!-- 10b · the AI economics summary -->
-    <section class="slide" data-title="AI economics">
+    <section class="slide" data-lang="en" data-title="AI economics">
       <p class="kicker">The metrics that decide "is this worth it"</p>
       <h2 class="title">Accuracy <em>and</em> cost — the top-line numbers</h2>
       <p class="lede">An AI migration is judged on two axes: <strong>how often it is right</strong> and <strong>what each right answer costs</strong>. The trick is that most of the trust is bought for <em>free</em> — the correctness audit spends no tokens. Only the last step spends money, and its price is bounded and reported.</p>
@@ -565,7 +632,7 @@ failed:differential 1   ·   flaky 1   ·   failed:retry_cap 0</pre>
     </section>
 
     <!-- 11 -->
-    <section class="slide" data-title="Recap">
+    <section class="slide" data-lang="en" data-title="Recap">
       <p class="kicker">The through-line</p>
       <h2 class="title">One sentence, end to end</h2>
       <p class="lede">Golden captured before the AI → subagents do the work in stages → hooks gate every transition through deterministic tools → the harness measures honestly.</p>
@@ -582,6 +649,364 @@ failed:differential 1   ·   flaky 1   ·   failed:retry_cap 0</pre>
       <div class="note">The fastest one-command sanity check, start to finish: <code>docker compose up -d</code> → <code>bash gates/verify.sh</code> → <code>bash gates/mutation-check.sh</code>. Green, then teeth — with no model in the loop.</div>
     </section>
 
+    <!-- ==================== UKRAINIAN SET ==================== -->
+
+    <!-- uk 0 -->
+    <section class="slide" data-lang="uk" data-title="Огляд">
+      <p class="kicker">Суть в одному реченні</p>
+      <h2 class="title">Як зробити ненадійний AI гідним довіри на реальній міграції</h2>
+      <p class="lede">Перетворення легасі-процедур T-SQL на сервіс .NET&nbsp;+&nbsp;MongoDB — це лише <em>транспорт</em>. Головне — оsnащення навколо: незалежний оракул, що ловить модель, коли вона впевнено помиляється, і вимірювання, яке це доводить.</p>
+      <div class="note">Ця презентація проходить репозиторій так, як має рецензент: кожен крок — це <strong>Do</strong> (що запустити) у парі з <strong>Check</strong> (який вивід доводить, що спрацювало). До самого останнього, чітко позначеного платного кроку нічого не потребує API-ключа моделі.</div>
+      <p>Три твердження тримають усе — тримайте їх у голові:</p>
+      <ul class="clean">
+        <li><strong>Некругова перевірка.</strong> Оракул правильності захоплюється з <em>оригінальної</em> процедури <em>ще до запуску будь-якої моделі</em>, тож AI не може змовитися з власним суддею.</li>
+        <li><strong>Агентна інженерія, а не промпт.</strong> Поетапні субагенти Claude Code з розділеним контекстом, керовані скілами, обмежені хуками.</li>
+        <li><strong>Чесне вимірювання.</strong> Харнес запускає реального агента headless і звітує точність <em>і</em> вартість — включно з провалами.</li>
+      </ul>
+      <p class="muted">Навігація — бічною панеллю, кнопками внизу або стрілками <kbd>←</kbd>&nbsp;<kbd>→</kbd>.</p>
+    </section>
+
+    <!-- uk 1 -->
+    <section class="slide" data-lang="uk" data-title="Карта">
+      <p class="kicker">Орієнтація</p>
+      <h2 class="title">Що де лежить</h2>
+      <p class="lede">Репозиторій спроєктований так, щоб його можна було оцінити <em>не запускаючи</em>. Простежте одну конверсію від початку до кінця — цілком у закомічених файлах.</p>
+      <table class="map">
+        <tr><td class="p">corpus/procs/</td><td>Оригінальні процедури T-SQL — <strong>вхід</strong>. 14 процедур (пʼять <code>Website.SearchFor*</code>, девʼять <code>Integration.Get*Updates</code>); одну — <code>SearchForCustomers</code> — проведено вручну крізь усі чотири стадії як showcase.</td></tr>
+        <tr><td class="p">corpus/golden/</td><td>Вивід, захоплений з оригіналів <strong>до будь-якої моделі</strong> — оракул. 67 golden-файлів на всі кейси.</td></tr>
+        <tr><td class="p">corpus/seed/</td><td>Реляційний seed + <em>фіксована</em> міграція, що породжує Mongo-seed (чиста функція від реляційних даних).</td></tr>
+        <tr><td class="p">.claude/</td><td><strong>Інженерія.</strong> <code>agents/</code> (4 субагенти), <code>skills/</code> (4 стандарти), <code>settings.json</code> + <code>hooks/</code> (перевірки в циклі).</td></tr>
+        <tr><td class="p">gates/</td><td>Детерміновані інструменти: <code>build · unit · differential · verify · mutation-check</code>. Жодної моделі в циклі.</td></tr>
+        <tr><td class="p">generated/</td><td>Те, що видав агент — showcase <code>SearchForCustomersService.cs</code>, його спека, тести й ревʼю.</td></tr>
+        <tr><td class="p">pipeline/</td><td><code>retry.md</code> — як провал перевірки повертається агентові (ліміт 2).</td></tr>
+        <tr><td class="p">docs/</td><td><code>architecture.md</code> і сім ADR — рішення, на яких тримається пайплайн.</td></tr>
+        <tr><td class="p">evals/</td><td>Харнес, його метод і результати (Phase 4 — у процесі).</td></tr>
+      </table>
+      <div class="note">Чотири ідеї далі відповідають один-до-одного файлам у <code>docs/adr/</code>. Коли крок каже «див. ADR-000X» — той файл містить повний аргумент.</div>
+    </section>
+
+    <!-- uk 1b -->
+    <section class="slide" data-lang="uk" data-title="Загальна картина">
+      <p class="kicker">Орієнтація · прочитайте це перед кроками</p>
+      <h2 class="title">Уся ідея в чотирьох рухах</h2>
+      <p class="lede">Кроки далі занурюються глибоко, по одній команді. Спершу — форма всієї системи: <strong>що відбувається, у якому порядку і де в репозиторії шукати кожну частину.</strong></p>
+
+      <div class="roadmap">
+        <div class="phase">
+          <span class="num">1</span>
+          <h4>Заморозити відповідь</h4>
+          <p>Запустити <em>оригінальний</em> T-SQL на seed-даних і закомітити вивід — <em>до того, як зʼявиться будь-яка модель</em>. Це оракул.</p>
+          <span class="where">corpus/golden/</span>
+        </div>
+        <div class="phase">
+          <span class="num">2</span>
+          <h4>Дати AI зробити роботу</h4>
+          <p>Чотири поетапні субагенти з розділеним контекстом і обмеженими інструментами перетворюють SQL на сервіс .NET&nbsp;+&nbsp;Mongo.</p>
+          <span class="where">.claude/agents/</span>
+        </div>
+        <div class="phase">
+          <span class="num">3</span>
+          <h4>Судити детерміновано</h4>
+          <p>Хуки запускають перевірки в циклі: build, unit, тоді <strong>differential</strong> проти замороженого оракула. Жодна модель не оцінює саму себе.</p>
+          <span class="where">gates/ · .claude/hooks/</span>
+        </div>
+        <div class="phase">
+          <span class="num">4</span>
+          <h4>Виміряти чесно</h4>
+          <p>Харнес запускає реального агента headless по кожній процедурі й звітує точність <em>і</em> вартість — з провалами включно.</p>
+          <span class="where">evals/ <span class="muted">(Phase 4)</span></span>
+        </div>
+      </div>
+
+      <div class="note"><strong>Де ви в презентації:</strong> наступні слайди проходять рухи&nbsp;1–3 як пари <strong>Do / Check</strong>, які можна запустити самому, а тоді доходять до руху&nbsp;4. Якщо якийсь слайд здається щільним — поверніться сюди: кожен крок — це одна коробка вище, наближена.</div>
+
+      <p class="muted">Одне речення на памʼять: <strong>відповідь заморожена до запуску AI, тож коли вивід AI збігається з нею — цей збіг щось означає.</strong> Усе інше — механіка, щоб зробити це порівняння чесним і відтворюваним.</p>
+    </section>
+
+    <!-- uk 2 -->
+    <section class="slide" data-lang="uk" data-title="Передумови">
+      <p class="kicker">Крок 0</p>
+      <h2 class="title">Передумови й підняття рушіїв</h2>
+      <p class="lede">Два контейнери на навмисно нестандартних портах, плюс хостовий Python і .NET 10. Тут ніщо не викликає модель.</p>
+      <div class="card do"><h3><span class="pill">DO</span> Підняти SQL Server + MongoDB</h3>
+<pre><span class="c"># з кореня репозиторію</span>
+cp .env.example .env          <span class="c"># задати MSSQL_SA_PASSWORD; .env у gitignore</span>
+docker compose up -d          <span class="c"># mssql → :11433 · mongo → :37017</span>
+./corpus/restore.sh           <span class="c"># відновити + заповнити зразкову БД (закріплений .bak, SHA-перевірка)</span></pre></div>
+      <div class="card check"><h3><span class="pill">CHECK</span> Обидва рушії живі</h3>
+<pre>docker compose ps
+<span class="c"># STATUS має бути "healthy" для mssql і mongo</span>
+<span class="g">mssql   ... (healthy)   0.0.0.0:11433->1433/tcp</span>
+<span class="g">mongo   ... (healthy)   0.0.0.0:37017->27017/tcp</span></pre></div>
+      <div class="warn"><strong>Порти нестандартні навмисно</strong> — <code>11433</code> / <code>37017</code> не конфліктують з SQL Server чи Mongo, які у вас уже можуть працювати. Також у PATH: лаунчер <code>py</code> (Python запускається на хості, не в контейнері — деякі образи Docker Hub тут блокує антивірус) і .NET 10 SDK.</div>
+    </section>
+
+    <!-- uk 3 -->
+    <section class="slide" data-lang="uk" data-title="Некругова перевірка">
+      <p class="kicker">Крок 1 · Несуча ідея · ADR-0001</p>
+      <h2 class="title">Оракул заморожений до того, як існує AI</h2>
+      <p class="lede">Кожне демо «AI сам протестував свою роботу» провалюється однаково: модель пише і код, <em>і</em> тести, тож обидва кодують те саме нерозуміння і збігаються, будучи обидва неправильними.</p>
+      <p>Тут golden-вивід захоплюється запуском <strong>оригінального, дослівного T-SQL</strong> на seed-даних — <em>без участі моделі</em> — і комітиться. Немає шляху, яким модель могла б вплинути на власного суддю.</p>
+      <div class="card do"><h3><span class="pill">DO</span> Подивитися оракул для showcase</h3>
+<pre>ls corpus/golden/ | grep SearchForCustomers</pre></div>
+      <div class="card check"><h3><span class="pill">CHECK</span> Один golden-файл на кожен поведінковий кейс</h3>
+<pre><span class="g">Website.SearchForCustomers__contact-name-match.json</span>
+<span class="g">Website.SearchForCustomers__null-contact-name-match.json</span>
+<span class="g">Website.SearchForCustomers__toys-both.json</span>
+<span class="g">Website.SearchForCustomers__top-1-pagination.json</span>
+<span class="g">Website.SearchForCustomers__no-match-empty.json</span></pre>
+      <p class="muted" style="margin:6px 0 0">Кожна назва — це кейс, який seed мав <em>розрізнити</em>: збіг, null-контакт, двобічний збіг, межа пагінації й порожній результат. Якщо seed не відрізняє двох поведінок — перевірка теж не зможе (ADR-0002).</p></div>
+      <div class="note">Хочете доказ, що оракул <em>стабільний</em>, а не просто наявний? <code>bash gates/verify-stable.sh</code> захоплює golden двічі в тимчасові теки й порівнює побайтно. Запущено щойно локально: <strong><span style="color:var(--good)">67 golden-файлів побайтно ідентичні у двох захопленнях</span></strong> — детермінований seed (фіксовані літерали) ⇒ ідентичні захоплення.</div>
+    </section>
+
+    <!-- uk 4 -->
+    <section class="slide" data-lang="uk" data-title="Механічний seed">
+      <p class="kicker">Крок 2 · ADR-0003</p>
+      <h2 class="title">Бік Mongo заповнюється механічно</h2>
+      <p class="lede">Тонкий спосіб змахлювати — вручну підігнати документи MongoDB так, щоб згенерований сервіс виглядав правильним. Тому Mongo-seed — це <strong>чиста функція від реляційного seed</strong>: одна таблиця → одна колекція, колонки дослівно, написано фіксованим кодом до будь-якої конверсії.</p>
+      <div class="card do"><h3><span class="pill">DO</span> Запустити триетапний цикл seed</h3>
+<pre>bash corpus/seed/seed-mongo.sh
+<span class="c"># relational.sql → export-relational.py → relational.json → to_mongo.py → Mongo</span></pre></div>
+      <div class="card check"><h3><span class="pill">CHECK</span> Пласке, точне дзеркало реляційного seed</h3>
+<pre><span class="c">[seed-mongo] applying relational seed → ...</span>
+<span class="c">[seed-mongo] exporting every base table → relational.json</span>
+<span class="c">[seed-mongo] loading Mongo (...:37017) from relational.json</span>
+<span class="g">[seed-mongo] OK:</span> Mongo seeded from relational.sql — both stores descend from one seed</pre>
+      <p class="muted" style="margin:6px 0 0">Одна колекція на базову таблицю; назви колонок перенесені дослівно; <code>decimal</code> → <code>Decimal128</code>. Сервіс читає <em>саме це</em>, ніколи не рукотворну фікстуру.</p></div>
+      <div class="note">Ось чому differential заслуговує довіри на <em>обох</em> кінцях: бік T-SQL — це заморожений golden, а бік Mongo не підігнано тихцем під відповідь — це закомічене, повторно запускане перетворення, яке будь-хто може перевірити в <code>corpus/seed/</code>.</div>
+    </section>
+
+    <!-- uk 5 -->
+    <section class="slide" data-lang="uk" data-title="Субагенти й скіли">
+      <p class="kicker">Крок 3 · ADR-0004 · чотири примітиви</p>
+      <h2 class="title">AI працює стадіями, озброєний скілами</h2>
+      <p class="lede">Ось де «AI-інженерія» перестає бути гаслом. Кожна стадія — це реальний механізм Claude Code: відкрийте <code>.claude/</code> і впізнаєте власні інструменти.</p>
+      <div class="grid2">
+        <div class="card"><h3 style="color:var(--clay-d)">Субагенти · .claude/agents/</h3>
+          <ul class="clean" style="margin:0">
+            <li><strong>analyst</strong> — лише читання + запис спеки, <em>без коду</em></li>
+            <li><strong>implementer</strong> — спека → .NET + Mongo</li>
+            <li><strong>test-author</strong> — окремий контекст, пише тести</li>
+            <li><strong>reviewer</strong> — <em>без</em> Write/Edit; читає, вантажить скіли, запускає перевірку</li>
+          </ul></div>
+        <div class="card"><h3 style="color:var(--clay-d)">Скіли · .claude/skills/</h3>
+          <ul class="clean" style="margin:0">
+            <li><strong>tsql-semantics</strong></li>
+            <li><strong>decimal-mapping</strong> → Decimal128 @ scale 4</li>
+            <li><strong>document-modelling</strong></li>
+            <li><strong>dotnet-service-shape</strong></li>
+          </ul></div>
+      </div>
+      <p>Розділення — і є суть: <code>test-author</code> не може успадкувати сліпу пляму <code>implementer</code>, бо ніколи не бачить, що було зручно написати. Скіли — це <em>версіоновані файли</em>, з якими звіряється reviewer, а не ефемерний промпт.</p>
+      <div class="card check"><h3><span class="pill">CHECK</span> Це справжні, розділені визначення — з реальним виводом</h3>
+<pre>ls .claude/agents/          <span class="c"># analyst · implementer · test-author · reviewer</span>
+<span class="g">analyst.md  implementer.md  test-author.md  reviewer.md</span>
+
+cat generated/Website.SearchForCustomers.review.md   <span class="c"># вердикт reviewer'а</span>
+<span class="c"># Verdict: <b>PASS</b></span>
+<span class="c">#  - Builds: обидва .csproj збираються, 0 помилок на .NET 10</span>
+<span class="c">#  - Tests green: 6/6 (5 golden-кейсів + 1 форма порожнього обʼєкта)</span>
+<span class="c">#  - Oracle intact: `git status corpus/` чистий — нічого не чіпали заради проходження</span></pre>
+      <p class="muted" style="margin:6px 0 0"><strong>Що ви отримуєте:</strong> <code>.spec.md</code> аналітика — це прозовий намір (параметри, джойни, фільтрація) <em>без коду</em>; <code>.review.md</code> reviewer'а — це вердикт скіл-за-скілом, що завершується на <code>PASS</code>/<code>FAIL</code> і підтверджує, що оракул не редагували. По чотири файли з кожного боку, по одній роботі кожен.</p></div>
+    </section>
+
+    <!-- uk 5b -->
+    <section class="slide" data-lang="uk" data-title="Пайплайн">
+      <p class="kicker">Крок 4 · ADR-0001 + 0004 · як рухається артефакт</p>
+      <h2 class="title">Одна процедура, чотири стадії, по одному артефакту</h2>
+      <p class="lede">Це весь пайплайн на одному екрані. Кожна стадія має <strong>обмежений набір інструментів</strong> і продукує <strong>рівно один файл</strong>; наступна його споживає. Обмеження інструментів — не декор: саме воно робить розділення примусовим, а не декларативним.</p>
+
+      <div class="flow">
+        <div class="stage">
+          <div class="in"><code>corpus/procs/&lt;Proc&gt;.sql</code></div>
+          <div class="agent"><b>analyst</b><span class="tools">Read · Grep · Glob · Write</span><span class="constraint">читає SQL, пише прозу — <em>ніколи не код</em></span></div>
+          <div class="out">→ <code>&lt;Proc&gt;.spec.md</code></div>
+        </div>
+        <div class="stage">
+          <div class="in"><code>spec.md</code></div>
+          <div class="agent"><b>implementer</b><span class="tools">Read · Grep · Glob · Write · Edit · Bash</span><span class="constraint">спека → .NET поверх плаского Mongo-seed</span></div>
+          <div class="out">→ <code>&lt;Proc&gt;Service.cs</code></div>
+        </div>
+        <div class="stage">
+          <div class="in"><code>spec.md</code> <span class="muted">(не міркування коду)</span></div>
+          <div class="agent"><b>test-author</b><span class="tools">Read · Grep · Glob · Write · Edit · Bash</span><span class="constraint">окремий контекст — читає сервіс лише заради <em>сигнатури</em></span></div>
+          <div class="out">→ <code>&lt;Proc&gt;Tests.cs</code></div>
+        </div>
+        <div class="stage">
+          <div class="in">усе вище</div>
+          <div class="agent"><b>reviewer</b><span class="tools">Read · Grep · Glob · Bash · <b>Skill</b> — <em>без Write/Edit</em></span><span class="constraint">звіряє з версіонованими скілами, запускає перевірку</span></div>
+          <div class="out">→ <code>&lt;Proc&gt;.review.md</code> + вердикт</div>
+        </div>
+      </div>
+
+      <div class="oracle-lane">
+        <div class="oracle"><b>corpus/golden/&lt;Proc&gt;__*.json</b><br><span class="muted">захоплено з оригінального T-SQL до запуску будь-якої стадії</span></div>
+        <div class="feeds">живить <b>implementer</b>, <b>test-author</b> і <b>перевірку</b> — кожного окремо, жодного через код</div>
+      </div>
+
+      <div class="note"><strong>Що має винести рецензент:</strong> golden доходить до test-author'а <em>не проходячи через код implementer'а</em>, тож тест може погодитися з хибною конверсією лише випадково, а не за успадкуванням. Ця одна стрілка — це ADR-0001, втілена на рівні агентів, і причина, чому число точності далі щось означає.</div>
+    </section>
+
+    <!-- uk 6 -->
+    <section class="slide" data-lang="uk" data-title="Перевірки">
+      <p class="kicker">Крок 5 · ADR-0005 · детермінований суддя</p>
+      <h2 class="title">Запустити перевірку — модель не потрібна</h2>
+      <p class="lede">Чотири інструменти на POSIX-sh, які викликає хук, людина або CI. <code>verify.sh</code> звʼязує їх і відтворює вердикт із нулем викликів моделі — це і є аудит.</p>
+      <div class="card do"><h3><span class="pill">DO</span> Відтворити опублікований вердикт</h3>
+<pre>bash gates/verify.sh          <span class="c"># build → unit → differential, зупинка на першому провалі</span></pre>
+      <p class="muted" style="margin:6px 0 0">Або одну стадію: <code>gates/build.sh</code>, <code>gates/unit.sh</code>, <code>gates/differential.sh</code>.</p></div>
+      <div class="card check"><h3><span class="pill">CHECK</span> Зелено на showcase <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--good)">— реальний локальний запуск, 2026-08-10</span></h3>
+<pre><span class="c">[verify] 1/3 build</span>
+<span class="g">[build] PASS:</span> service builds (Release)          <span class="c"># 0 помилок, 2.5s</span>
+<span class="c">[verify] 2/3 unit tests</span>
+Passed!  - Failed: 0, <b>Passed: 6</b>, Skipped: 0, Total: 6
+<span class="g">[unit] PASS:</span> unit tests green                  <span class="c"># 5 InlineData + 1 Fact</span>
+<span class="c">[verify] 3/3 differential vs golden</span>
+  <span class="g">✓ toys-both</span>                identical after canonicalise
+  <span class="g">✓ contact-name-match</span>       identical after canonicalise
+  <span class="g">✓ null-contact-name-match</span>  identical after canonicalise
+  <span class="g">✓ no-match-empty</span>           identical after canonicalise
+  <span class="g">✓ top-1-pagination</span>         identical after canonicalise
+<span class="g">[differential] PASS:</span> all 5 cases identical to golden
+<span class="g">[verify] PASS:</span> verdict reproduced with no model calls</pre>
+      <p class="muted" style="margin:6px 0 0"><strong>Це захоплений запуск, а не макет:</strong> увесь аудит за <strong>~53s</strong>, <strong>$0</strong>, нуль викликів моделі. Differential збирає <em>раз</em>, запускає скомпільований бінар (щоб stdout був чистим JSON) і порівнює кожен кейс із golden через власний <code>canonicalise.py</code> перевірки (decimal у фіксовані рядки scale-4, ключі відсортовані).</p></div>
+      <div class="warn"><strong>Чому це важливо:</strong> <em>власні</em> згенеровані тести агента (ті 6/6) ніколи не мають повноважень оголосити конверсію правильною — вони могли б помилятися в тому самому напрямку, що й код. Лише <strong>differential</strong> проти до-модельного golden може це сказати.</div>
+    </section>
+
+    <!-- uk 7 -->
+    <section class="slide" data-lang="uk" data-title="Хуки в циклі">
+      <p class="kicker">Крок 6 · перевірки, вбудовані в цикл агента</p>
+      <h2 class="title">Хуки перевіряють кожен перехід автоматично</h2>
+      <p class="lede">Окремі перевірки — це аудит; хуки — це те, що робить цикл <em>самокоригованим</em>. Вони живуть у <code>.claude/settings.json</code> і повертають провали одразу через угоду exit-2.</p>
+      <table class="map">
+        <tr><td class="p">PostToolUse</td><td>Після будь-якого запису <code>.cs/.csproj</code> під <code>generated/</code> — <strong>build</strong>: поломка компіляції спливає в ту ж мить, коли її внесли, а не через три виклики інструментів.</td></tr>
+        <tr><td class="p">Stop</td><td>Агент не може оголосити себе завершеним, поки <strong>differential червоний</strong>. Термінальна перевірка правильності.</td></tr>
+        <tr><td class="p">PreToolUse</td><td><code>guard-path</code> провалюється <strong>закрито</strong>: записи дозволені лише під <code>generated/</code>. Тож зелена перевірка ніколи не може означати «агент відредагував оракул під свій вивід».</td></tr>
+      </table>
+      <div class="card do"><h3><span class="pill">DO</span> Побачити звʼязку, тоді перевірити guard через pipe</h3>
+<pre>cat .claude/settings.json
+
+<span class="c"># guard блокує запис в оракул…  (ROOT — абсолютний шлях репозиторію)</span>
+ROOT="$(pwd)"   <span class="c"># у git-bash: ROOT="$(pwd -W)"</span>
+printf '{"tool_name":"Write","tool_input":{"file_path":"%s/corpus/x"}}' "$ROOT" \
+  | CLAUDE_PROJECT_DIR="$ROOT" bash .claude/hooks/guard-path.sh; echo "exit=$?"</pre></div>
+      <div class="card check"><h3><span class="pill">CHECK</span> Заблоковано поза generated/, дозволено всередині</h3>
+<pre><span class="g">[guard-path] BLOCKED:</span> ... is outside the allowed folders
+exit=<b>2</b>
+<span class="c"># замінити шлях на .../generated/x → exit=0 (дозволено)</span></pre></div>
+    </section>
+
+    <!-- uk 8 -->
+    <section class="slide" data-lang="uk" data-title="Доведені зуби">
+      <p class="kicker">Крок 7 · ADR-0006 · обовʼязково</p>
+      <h2 class="title">Довести, що перевірка має зуби</h2>
+      <p class="lede">Differential, якому ніколи не показували <em>провал</em> на хибній конверсії, — це неперевірена перевірка, її «зелено» нічого не варте. Тож ми впорскуємо відомі баги й вимагаємо, щоб перевірка спіймала кожен.</p>
+      <div class="card do"><h3><span class="pill">DO</span> Запустити mutation-check</h3>
+<pre>bash gates/mutation-check.sh
+<span class="c"># впорскує 5 однорядкових багів у сервіс, по одному за раз,</span>
+<span class="c"># і вимагає, щоб differential ставав ЧЕРВОНИМ на кожному</span></pre></div>
+      <div class="card check"><h3><span class="pill">CHECK</span> Кожен мутант спійманий <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--good)">— реальний локальний запуск, 2026-08-10</span></h3>
+<pre><span class="g">[mutation] PASS:</span> baseline green — the gate agrees the <b>unmutated</b> service is correct
+<span class="c">[mutation] injecting 5 mutations; each must turn the differential red</span>
+  <span class="g">✓ drop-where</span>        caught (differential red)
+  <span class="g">✓ break-order</span>      caught (differential red)
+  <span class="g">✓ shift-pagination</span> caught (differential red)
+  <span class="g">✓ drop-join</span>        caught (differential red)
+  <span class="g">✓ type-coercion</span>    caught (differential red)
+<span class="g">[mutation] PASS:</span> all 5 mutants caught — the differential has teeth (ADR-0006)</pre>
+      <p class="muted" style="margin:6px 0 0"><strong>Захоплено, не заявлено:</strong> ~<strong>2m10s</strong> на весь цикл — незаплямований baseline, який має пройти, тоді пʼять однорядкових багів по одному, кожен змушений зробити differential червоним. Саме baseline-перевірка робить решту пʼять значущими: вона доводить, що перевірка не «завжди червона».</p></div>
+      <div class="note"><strong>Чесна примітка про обсяг (із заголовка скрипта, не прихована):</strong> ADR-0006 також називає мутанта точності <code>decimal(18,4)→float</code>. Ця showcase-процедура не повертає decimal-колонки, тож <code>type-coercion</code> заступає клас «хибне числове представлення»; справжню втрату точності опрацьовано, коли конвертується грошова процедура <code>Integration.Get*Updates</code>. Один <em>неспійманий</em> мутант указав би рівно на одну з двох причин: порівняння занадто вільне, або в seed є діра в гілці (ADR-0002).</div>
+    </section>
+
+    <!-- uk 9 -->
+    <section class="slide" data-lang="uk" data-title="Протокол повторів">
+      <p class="kicker">Крок 8 · pipeline/retry.md</p>
+      <h2 class="title">Коли перевірка каже «ні»</h2>
+      <p class="lede">Провал має дійти до агента як корекція, на яку він може діяти, а не як тихий глухий кут. Шлях помилки навмисно розділено на дві половини.</p>
+      <div class="grid2">
+        <div class="card"><h3 style="color:var(--clay-d)">У циклі · хуки</h3><p style="margin:0">Швидкі корекції без памʼяті. <code>PostToolUse</code> повертає помилку компіляції; <code>Stop</code> повертає провальні кейси differential. Той самий хід, негайно.</p></div>
+        <div class="card"><h3 style="color:var(--clay-d)">Між спробами · харнес</h3><p style="margin:0"><strong>Ліміт 2</strong> живе тут, не в хуках — хуки не мають памʼяті. Після ліміту харнес зупиняється й фіксує <em>чесний провал</em>.</p></div>
+      </div>
+      <p>Ліміт — це те, що перетворює «ніколи не бреше» на «ніколи не бреше <em>і</em> завжди завершується». Процедура, якій знадобилося три спроби, ніколи тихцем не підвищується до успіху. А блок <code>guard-path</code> — це <em>відмова</em>, а не повтор: виправлення — записати інший файл, а не пробувати той самий незаконний запис знову.</p>
+      <div class="card check"><h3><span class="pill">CHECK</span> Як виглядає повернутий провал</h3>
+<pre>cat pipeline/retry.md   <span class="c"># протокол; ліміт живе в харнесі, не в хуках</span>
+
+<span class="c"># корекція від Stop-хука, яку агент отримує посеред ходу:</span>
+<span class="k">[differential]</span> <b>FAIL</b>: 1/5 cases differ from golden
+  <span class="g">✓</span> contact-name-match      <span class="g">✓</span> null-contact-name-match
+  <span class="k">✗ top-1-pagination</span>       DIFFERS  <span class="c"># очікували Tailspin, отримали Wingtip</span>
+<span class="c"># → агент редагує generated/…Service.cs і повторює (спроба 2 з 2)</span></pre>
+      <p class="muted" style="margin:6px 0 0"><strong>Що ви отримуєте:</strong> провал ніколи не приходить голим «ні» — він приходить як точні відмінні кейси, на які агент і діє. Після ліміту харнес припиняє перепитувати й фіксує процедуру як <code>failed:differential</code> з її останнім виводом — чесний провал, а не тихий успіх.</p></div>
+    </section>
+
+    <!-- uk 10 -->
+    <section class="slide" data-lang="uk" data-title="Вимір (платно)">
+      <p class="kicker">Крок 9 · Phase 4 · опційно й платно</p>
+      <h2 class="title">Дати реальному агенту працювати — і виміряти</h2>
+      <p class="lede">Усе досі працювало без викликів моделі. Останній крок — добровільний, платний: запустити Claude Code headless по корпусу й зібрати точність <em>і</em> вартість із реальних запусків.</p>
+      <div class="warn"><strong>Це єдиний крок, що витрачає гроші.</strong> Харнес (<code>evals/harness.py</code>) — це Phase 4 і досі в процесі; метод пре-реєстровано, тож числа фальсифіковані ще до того, як вони існують. Див. <code>evals/PREREGISTRATION.md</code>.</div>
+      <div class="card do"><h3><span class="pill">DO</span> Коли харнес зʼявиться</h3>
+<pre><span class="c"># відтворити результати із закомічених артефактів, БЕЗ викликів моделі:</span>
+bash gates/verify.sh
+<span class="c"># перезапустити агента від початку до кінця (ПЛАТНО, добровільно):</span>
+./run.sh</pre></div>
+      <div class="card check"><h3><span class="pill">CHECK</span> Форма того, що він звітує <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink-3)">(ілюстративно — запуску ще не було)</span></h3>
+<pre><span class="c"># Таблиця 1 — заголовок: cleared_within_cap + вартість, k=3</span>
+proc                              cleared/3   outcome            $/proc
+<span class="g">Website.SearchForCustomers        3/3         cleared            2.10</span>
+<span class="g">Integration.GetCustomerUpdates    3/3         cleared            1.98</span>
+<span class="k">Integration.GetOrderUpdates       2/3         flaky              2.34</span>
+<span class="k">Integration.GetStockItemUpdates   0/3         failed:differential 2.31</span>
+
+<span class="c"># Таблиця 2 — таксономія провалів (нуль провалів = знахідка, а не перемога)</span>
+failed:differential 1   ·   flaky 1   ·   failed:retry_cap 0</pre>
+      <p class="muted" style="margin:6px 0 0"><strong>Що ви отримуєте:</strong> <em>розподіл</em>, а не одне число — <code>cleared/3</code> оголює нестабільність, яку точкова оцінка сховала б — плюс вартість у доларах на процедуру й явна таксономія провалів. Числа тут — заповнювачі, що показують форму таблиці; реальні зʼявляться, коли запуститься <code>evals/harness.py</code>. <strong>Економіка цих чисел</strong> — на наступному слайді.</p></div>
+    </section>
+
+    <!-- uk 10b -->
+    <section class="slide" data-lang="uk" data-title="Економіка AI">
+      <p class="kicker">Метрики, що вирішують «чи воно того варте»</p>
+      <h2 class="title">Точність <em>і</em> вартість — числа верхнього рівня</h2>
+      <p class="lede">AI-міграцію судять за двома осями: <strong>як часто вона права</strong> і <strong>скільки коштує кожна правильна відповідь</strong>. Фокус у тому, що більшість довіри купується <em>безкоштовно</em> — аудит правильності не витрачає токенів. Лише останній крок витрачає гроші, і його ціна обмежена й звітована.</p>
+
+      <p style="margin:2px 0 4px"><strong>Виміряно щойно — безкоштовний аудит, запущено локально 2026-08-10 (0 викликів моделі):</strong></p>
+      <div class="econ">
+        <div class="metric"><span class="lbl">Правильність</span><span class="val">5/5</span><span class="sub"><code>differential</code> проти замороженого golden — кожен showcase-кейс ідентичний після canonicalise. 6/6 unit зелені.</span></div>
+        <div class="metric"><span class="lbl">Перевірка з зубами</span><span class="val">5/5</span><span class="sub">Впорснуті однорядкові баги всі зробили differential червоним; незаплямований baseline лишився зеленим.</span></div>
+        <div class="metric"><span class="lbl">Оракул стабільний</span><span class="val">67/67</span><span class="sub">Golden-файли побайтно ідентичні у двох незалежних захопленнях — детермінований seed.</span></div>
+        <div class="metric"><span class="lbl">Вартість аудиту</span><span class="val">$0.00</span><span class="sub">verify ~53s + mutation ~2m10s. Нуль токенів: увесь аудит працює без моделі.</span></div>
+      </div>
+
+      <p style="margin:16px 0 4px"><strong>Прогноз — єдиний платний крок (<code>evals/harness.py</code>, ще не запущено), Claude Opus 5 @ $5&thinsp;/&thinsp;$25 за 1M ток:</strong></p>
+      <table class="econ-t">
+        <tr><th>Рядок</th><th>Токени</th><th>Ставка /1M</th><th>Вартість</th></tr>
+        <tr><td>Вхід, одна спроба</td><td class="n">60,000</td><td class="n">$5</td><td class="n">$0.30</td></tr>
+        <tr><td>Вихід, одна спроба</td><td class="n">16,000</td><td class="n">$25</td><td class="n">$0.40</td></tr>
+        <tr><td>На процедуру · k=3 спроби</td><td class="n">×3</td><td class="n">—</td><td class="n">$2.10</td></tr>
+        <tr class="tot"><td>14 процедур · ~11 cleared</td><td class="n">~3.2M</td><td class="n">—</td><td class="n">$29.40 → ~$2.67/cleared</td></tr>
+      </table>
+
+      <div class="warn"><strong>Головне для рецензента:</strong> зелений блок — <em>виміряний</em>: реальні локальні запуски, відтворені за $0. Прогнозний рядок — це пророблена оцінка: цифра токенів-на-спробу є припущенням (харнес замінить її виміряним значенням), але ціни, k=3 і ліміт повторів усі зафіксовані в <code>PREREGISTRATION.md</code> <em>до</em> запуску, тож число фальсифіковане, а не підігнане. <code>вартість / cleared</code> (а не на спробу) — чесна одиниця: провальні й нестабільні процедури теж витрачають токени, тож їхня вартість вкладається у ті, що вдалися — саме це число множать на беклог із 500 процедур, щоб вирішити, чи харнес окупається.</div>
+    </section>
+
+    <!-- uk 11 -->
+    <section class="slide" data-lang="uk" data-title="Підсумок">
+      <p class="kicker">Наскрізна лінія</p>
+      <h2 class="title">Одне речення, від початку до кінця</h2>
+      <p class="lede">Golden захоплено до AI → субагенти роблять роботу стадіями → хуки перевіряють кожен перехід детермінованими інструментами → харнес вимірює чесно.</p>
+      <table class="map">
+        <tr><td class="p">1 · перевірка</td><td>Некруговий оракул, заморожений до будь-якої моделі — <code>corpus/golden/</code> (ADR-0001)</td></tr>
+        <tr><td class="p">2 · seed</td><td>Mongo — чиста функція від реляційного seed — <code>corpus/seed/</code> (ADR-0003)</td></tr>
+        <tr><td class="p">3 · агенти</td><td>Чотири субагенти + чотири скіли, розділений контекст — <code>.claude/</code> (ADR-0004)</td></tr>
+        <tr><td class="p">4 · gates</td><td><code>verify.sh</code> відтворює вердикт, без моделі — <code>gates/</code> (ADR-0005)</td></tr>
+        <tr><td class="p">5 · хуки</td><td>Кожен перехід перевіряється в циклі — <code>.claude/settings.json</code></td></tr>
+        <tr><td class="p">6 · зуби</td><td>5/5 мутантів спіймано — <code>gates/mutation-check.sh</code> (ADR-0006)</td></tr>
+        <tr><td class="p">7 · повтори</td><td>Провали повертаються, ліміт 2 — <code>pipeline/retry.md</code></td></tr>
+        <tr><td class="p">8 · вимір</td><td>Реальні headless-запуски, вартість + провали — <code>evals/</code> (Phase 4)</td></tr>
+      </table>
+      <div class="note">Найшвидша перевірка однією командою, від початку до кінця: <code>docker compose up -d</code> → <code>bash gates/verify.sh</code> → <code>bash gates/mutation-check.sh</code>. Зелено, тоді зуби — без моделі в циклі.</div>
+    </section>
+
   </main>
 </div>
 
@@ -593,27 +1018,77 @@ failed:differential 1   ·   flaky 1   ·   failed:retry_cap 0</pre>
 </div>
 
 <script>
-  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var allSlides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
   var toc = document.getElementById('toc');
   var bar = document.getElementById('bar');
   var count = document.getElementById('count');
   var prev = document.getElementById('prev');
   var next = document.getElementById('next');
-  var i = 0;
 
-  slides.forEach(function (s, idx) {
-    var a = document.createElement('a');
-    a.innerHTML = '<span class="n">' + idx + '</span><span>' + s.dataset.title + '</span>';
-    a.onclick = function () { go(idx); };
-    toc.appendChild(a);
-  });
-  var links = Array.prototype.slice.call(toc.children);
+  // ---- persistence helpers (localStorage may throw in private mode) ----
+  function save(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+
+  // ---- current UI state ----
+  var lang = document.documentElement.getAttribute('lang') === 'uk' ? 'uk' : 'en';
+  var i = 0;               // index within the *active-language* slide list
+  var slides = [];         // active-language slides, rebuilt on language change
+  var links = [];          // matching TOC anchors
+
+  // ---- language ----
+  // The two slide sets mirror each other 1:1 and in the same order, so a slide's
+  // position within its own language survives a language switch.
+  function rebuild() {
+    slides = allSlides.filter(function (s) { return s.dataset.lang === lang; });
+    // Hide every slide not in the active language; the visible one is set by go().
+    allSlides.forEach(function (s) {
+      if (s.dataset.lang !== lang) s.classList.remove('show');
+    });
+    toc.innerHTML = '';
+    links = slides.map(function (s, idx) {
+      var a = document.createElement('a');
+      a.innerHTML = '<span class="n">' + idx + '</span><span>' + s.dataset.title + '</span>';
+      a.onclick = function () { go(idx); };
+      toc.appendChild(a);
+      return a;
+    });
+  }
+
+  function setLang(l) {
+    if (l !== 'en' && l !== 'uk') return;
+    var keep = i;                       // preserve position across the switch
+    lang = l;
+    document.documentElement.setAttribute('lang', l);
+    save('s2s-lang', l);
+    document.getElementById('lang-en').classList.toggle('on', l === 'en');
+    document.getElementById('lang-uk').classList.toggle('on', l === 'uk');
+    rebuild();
+    go(keep);
+  }
+
+  // ---- theme ----
+  function setTheme(t) {
+    if (t !== 'light' && t !== 'dark') return;
+    document.documentElement.setAttribute('data-theme', t);
+    save('s2s-theme', t);
+    document.getElementById('th-light').classList.toggle('on', t === 'light');
+    document.getElementById('th-dark').classList.toggle('on', t === 'dark');
+  }
+  // Reflect the effective theme on the buttons even when nothing is pinned yet
+  // (default follows the OS via the media query — no data-theme attribute).
+  function syncThemeButtons() {
+    var pinned = document.documentElement.getAttribute('data-theme');
+    var effective = pinned ||
+      (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    document.getElementById('th-light').classList.toggle('on', effective === 'light');
+    document.getElementById('th-dark').classList.toggle('on', effective === 'dark');
+  }
 
   function go(n) {
     i = Math.max(0, Math.min(slides.length - 1, n));
     slides.forEach(function (s, idx) { s.classList.toggle('show', idx === i); });
     links.forEach(function (a, idx) { a.classList.toggle('active', idx === i); });
-    bar.style.width = ((i) / (slides.length - 1) * 100) + '%';
+    bar.style.width = (slides.length > 1 ? (i / (slides.length - 1) * 100) : 0) + '%';
     count.textContent = (i + 1) + ' / ' + slides.length;
     prev.disabled = i === 0;
     next.disabled = i === slides.length - 1;
@@ -621,6 +1096,13 @@ failed:differential 1   ·   flaky 1   ·   failed:retry_cap 0</pre>
     window.scrollTo(0, 0);
     if (location.hash !== '#' + i) history.replaceState(null, '', '#' + i);
   }
+
+  // ---- wiring ----
+  document.getElementById('th-light').onclick = function () { setTheme('light'); };
+  document.getElementById('th-dark').onclick = function () { setTheme('dark'); };
+  document.getElementById('lang-en').onclick = function () { setLang('en'); };
+  document.getElementById('lang-uk').onclick = function () { setLang('uk'); };
+
   prev.onclick = function () { go(i - 1); };
   next.onclick = function () { go(i + 1); };
   document.addEventListener('keydown', function (e) {
@@ -632,7 +1114,18 @@ failed:differential 1   ·   flaky 1   ·   failed:retry_cap 0</pre>
     var h = parseInt((location.hash || '#0').slice(1), 10);
     if (!isNaN(h) && h !== i) go(h);
   });
+  // If the theme is unpinned, follow later OS changes and keep the buttons honest.
+  if (window.matchMedia) {
+    var mq = window.matchMedia('(prefers-color-scheme: light)');
+    var onMq = function () { if (!document.documentElement.getAttribute('data-theme')) syncThemeButtons(); };
+    if (mq.addEventListener) mq.addEventListener('change', onMq); else if (mq.addListener) mq.addListener(onMq);
+  }
 
+  // ---- boot: state was already applied to <html> by the head script ----
+  syncThemeButtons();
+  document.getElementById('lang-en').classList.toggle('on', lang === 'en');
+  document.getElementById('lang-uk').classList.toggle('on', lang === 'uk');
+  rebuild();
   var start = parseInt((location.hash || '#0').slice(1), 10);
   go(isNaN(start) ? 0 : start);
 </script>
