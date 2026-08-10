@@ -125,6 +125,23 @@
   .progress > i { display: block; height: 100%; background: var(--clay); border-radius: 999px; transition: width .3s; }
   .count { font-size: 12.5px; color: var(--ink-3); min-width: 52px; text-align: center; }
   kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 1px 6px; color: var(--ink-2); }
+
+  /* ---- pipeline / artifact-flow diagram ---- */
+  .flow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 14px 0 6px; }
+  .stage { display: flex; flex-direction: column; gap: 6px; }
+  .stage .in, .stage .out { font-size: 11.5px; color: var(--ink-3); text-align: center; }
+  .stage .in code, .stage .out code { background: var(--paper-2); border: 1px solid var(--line); border-radius: 6px; padding: 1px 5px; font-size: 11px; color: var(--ink-2); }
+  .stage .out { color: var(--clay-d); font-weight: 600; }
+  .stage .out code { color: var(--clay-d); border-color: #e6d5cc; background: #fbf3ef; }
+  .agent { background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 10px 11px; display: flex; flex-direction: column; gap: 5px; min-height: 104px; }
+  .agent b:first-child { color: var(--clay-d); font-size: 14px; }
+  .agent .tools { font-family: ui-monospace, monospace; font-size: 10px; color: var(--good); background: var(--good-bg); border-radius: 6px; padding: 3px 6px; line-height: 1.4; }
+  .agent .constraint { font-size: 11px; color: var(--ink-2); line-height: 1.35; }
+  .oracle-lane { display: grid; grid-template-columns: 1fr 1.4fr; gap: 12px; align-items: center; margin: 12px 0 2px; background: #fbf3ef; border: 1px dashed var(--clay); border-radius: 12px; padding: 11px 14px; }
+  .oracle-lane .oracle { font-size: 12.5px; }
+  .oracle-lane .oracle b { color: var(--clay-d); font-family: ui-monospace, monospace; font-size: 12px; }
+  .oracle-lane .feeds { font-size: 13px; color: var(--ink-2); }
+  @media (max-width: 900px) { .flow { grid-template-columns: 1fr 1fr; } .oracle-lane { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -258,9 +275,46 @@ cat generated/Website.SearchForCustomers.spec.md   <span class="c"># the analyst
 cat generated/Website.SearchForCustomers.review.md <span class="c"># the reviewer's verdict</span></pre></div>
     </section>
 
+    <!-- 5b · the artifact chain -->
+    <section class="slide" data-title="The pipeline">
+      <p class="kicker">Step 4 · ADR-0001 + 0004 · how an artifact moves</p>
+      <h2 class="title">One procedure, four stages, one artifact each</h2>
+      <p class="lede">This is the whole pipeline on one screen. Each stage has a <strong>scoped tool set</strong> and produces <strong>exactly one file</strong>; the next stage consumes it. The tool scoping isn't decoration — it's what makes the separation enforceable rather than aspirational.</p>
+
+      <div class="flow">
+        <div class="stage">
+          <div class="in"><code>corpus/procs/&lt;Proc&gt;.sql</code></div>
+          <div class="agent"><b>analyst</b><span class="tools">Read · Grep · Glob · Write</span><span class="constraint">reads SQL, writes prose — <em>no code, ever</em></span></div>
+          <div class="out">→ <code>&lt;Proc&gt;.spec.md</code></div>
+        </div>
+        <div class="stage">
+          <div class="in"><code>spec.md</code></div>
+          <div class="agent"><b>implementer</b><span class="tools">Read · Grep · Glob · Write · Edit · Bash</span><span class="constraint">spec → .NET over the flat Mongo seed</span></div>
+          <div class="out">→ <code>&lt;Proc&gt;Service.cs</code></div>
+        </div>
+        <div class="stage">
+          <div class="in"><code>spec.md</code> <span class="muted">(not the code's reasoning)</span></div>
+          <div class="agent"><b>test-author</b><span class="tools">Read · Grep · Glob · Write · Edit · Bash</span><span class="constraint">separate context — reads the service only for its <em>signature</em></span></div>
+          <div class="out">→ <code>&lt;Proc&gt;Tests.cs</code></div>
+        </div>
+        <div class="stage">
+          <div class="in">all of the above</div>
+          <div class="agent"><b>reviewer</b><span class="tools">Read · Grep · Glob · Bash · <b>Skill</b> — <em>no Write/Edit</em></span><span class="constraint">checks vs versioned skills, runs the gate</span></div>
+          <div class="out">→ <code>&lt;Proc&gt;.review.md</code> + verdict</div>
+        </div>
+      </div>
+
+      <div class="oracle-lane">
+        <div class="oracle"><b>corpus/golden/&lt;Proc&gt;__*.json</b><br><span class="muted">captured from the original T-SQL before any stage ran</span></div>
+        <div class="feeds">feeds <b>implementer</b>, <b>test-author</b> and the <b>gate</b> — each independently, none through the code</div>
+      </div>
+
+      <div class="note"><strong>What a reviewer should take from this:</strong> the golden reaches the test-author <em>without passing through the implementer's code</em>, so a test can only agree with a wrong conversion by coincidence, not by inheritance. That single arrow is ADR-0001 made concrete at the agent level — and the reason the accuracy number later means something.</div>
+    </section>
+
     <!-- 6 -->
     <section class="slide" data-title="The gates">
-      <p class="kicker">Step 4 · ADR-0005 · the deterministic judge</p>
+      <p class="kicker">Step 5 · ADR-0005 · the deterministic judge</p>
       <h2 class="title">Run the gate — no model required</h2>
       <p class="lede">Four POSIX-sh tools, callable by a hook, a human, or CI. <code>verify.sh</code> chains them and reproduces the verdict with zero model calls — this is the audit.</p>
       <div class="card do"><h3><span class="pill">DO</span> Reproduce the published verdict</h3>
@@ -280,7 +334,7 @@ cat generated/Website.SearchForCustomers.review.md <span class="c"># the reviewe
 
     <!-- 7 -->
     <section class="slide" data-title="In-loop hooks">
-      <p class="kicker">Step 5 · the gates, wired into the agent loop</p>
+      <p class="kicker">Step 6 · the gates, wired into the agent loop</p>
       <h2 class="title">Hooks gate every transition automatically</h2>
       <p class="lede">Standalone gates are the audit; hooks are what make the loop <em>self-correcting</em>. They live in <code>.claude/settings.json</code> and feed failures straight back via the exit-2 convention.</p>
       <table class="map">
@@ -303,7 +357,7 @@ exit=<b>2</b>
 
     <!-- 8 -->
     <section class="slide" data-title="Proven teeth">
-      <p class="kicker">Step 6 · ADR-0006 · mandatory</p>
+      <p class="kicker">Step 7 · ADR-0006 · mandatory</p>
       <h2 class="title">Prove the gate has teeth</h2>
       <p class="lede">A differential that has never been shown to <em>fail</em> on a wrong conversion is an untested gate — its green is worth nothing. So we inject known bugs and require the gate to catch every one.</p>
       <div class="card do"><h3><span class="pill">DO</span> Run the mutation check</h3>
@@ -322,7 +376,7 @@ exit=<b>2</b>
 
     <!-- 9 -->
     <section class="slide" data-title="Retry protocol">
-      <p class="kicker">Step 7 · pipeline/retry.md</p>
+      <p class="kicker">Step 8 · pipeline/retry.md</p>
       <h2 class="title">When a gate says "no"</h2>
       <p class="lede">A failure has to reach the agent as a correction it can act on — not a silent dead end. The error path is split into two halves on purpose.</p>
       <div class="grid2">
@@ -336,7 +390,7 @@ exit=<b>2</b>
 
     <!-- 10 -->
     <section class="slide" data-title="Measure (paid)">
-      <p class="kicker">Step 8 · Phase 4 · optional &amp; paid</p>
+      <p class="kicker">Step 9 · Phase 4 · optional &amp; paid</p>
       <h2 class="title">Let the real agent run — and measure it</h2>
       <p class="lede">Everything so far ran with no model calls. The last step is the opt-in, paid one: run Claude Code headless over the corpus and collect accuracy <em>and</em> cost from real executions.</p>
       <div class="warn"><strong>This is the only step that spends money.</strong> The harness (<code>evals/harness.py</code>) is Phase 4 and still in progress — the method is pre-registered so the numbers are falsifiable before they exist. See <code>evals/PREREGISTRATION.md</code>.</div>
