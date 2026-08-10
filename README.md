@@ -1,5 +1,7 @@
 # sql-to-service
 
+[![verify](https://github.com/viacheslavmelnichenko/sql-to-service/actions/workflows/verify.yml/badge.svg)](https://github.com/viacheslavmelnichenko/sql-to-service/actions/workflows/verify.yml)
+
 **An engineering harness that makes an unreliable AI trustworthy on a real
 migration task.**
 
@@ -20,11 +22,12 @@ here is real platform mechanism, not a wrapper script pretending to be an agent.
 > **Status:** design-complete, implementation in progress. Two kinds of number
 > live in this project, and the difference is the whole point:
 > - The **gate results** exist today and are reproducible at $0 with no model call
->   — one showcase proc passing its differential (5/5 cases), the mutation check
->   catching 5/5 injected bugs, the oracle stable across 67 golden files. Run
->   `gates/verify.sh` + `gates/mutation-check.sh` and you regenerate them yourself;
->   the [walkthrough](https://viacheslavmelnichenko.github.io/sql-to-service/) shows
->   each one paired with its command.
+>   — two converted procs passing their differential (6/6 cases, incl. a
+>   decimal-bearing proc), the mutation check catching 8/8 injected bugs across both
+>   (incl. the `decimal→double` precision mutant), the oracle stable across 67 golden
+>   files. Run `gates/verify.sh` + `gates/mutation-check.sh` and you regenerate them
+>   yourself; the [walkthrough](https://viacheslavmelnichenko.github.io/sql-to-service/)
+>   shows each one paired with its command.
 > - The **eval numbers** — corpus-wide accuracy, per-proc cost, the failure
 >   taxonomy — do **not** exist yet. They land with the Phase-4 harness
 >   (`evals/harness.py`), and where one would go this document says so plainly

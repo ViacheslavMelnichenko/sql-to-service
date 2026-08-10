@@ -161,8 +161,8 @@ the single highest-leverage item in the whole tracker.
 | B.2 | Convert 2–3 more procs, incl. one decimal-bearing | `generated/GetStockHoldingUpdatesService.cs` (+ csproj/runner/test) | done |
 | B.3 | Minimal real eval harness + one honest result | `evals/harness.py`, `run.sh`, `evals/results/run-001.json` | blocked |
 | B.4 | Naive single-prompt baseline (the control) | `evals/results/baseline.json` | blocked |
-| B.5 | Wire the gates into CI as required checks | `.github/workflows/verify.yml` | todo |
-| B.6 | Gate-time seed-identity assertion | `gates/differential.sh` (or `verify.sh`) | todo |
+| B.5 | Wire the gates into CI as required checks | `.github/workflows/verify.yml` | done |
+| B.6 | Gate-time seed-identity assertion | `gates/differential.sh` (or `verify.sh`) | done |
 
 **B.1 done.** The gates are proc-agnostic, driven by a new manifest
 `generated/runners.json` (proc → csproj/assembly/service) plus a **uniform runner
@@ -231,6 +231,30 @@ retrofitted numbers, and a composed result is the exact fraud this repo polices.
 The tail of B.3 (revert A.3 to present tense, replace the demo's illustrative
 Phase-4 table) stays parked until the real numbers exist. B.4 (baseline) rides the
 same plumbing and is blocked on the same opt-in.
+
+**B.6 done.** `gates/differential.sh` now, right after `seed-mongo.sh` regenerates
+`relational.json`, diffs the fresh export against the committed copy the golden was
+captured from and fails loudly on any drift (ADR-0001/0003) — closing the one live
+non-circularity risk (a container whose SQL Server exports subtly differently would
+drift Mongo from golden silently). It runs exactly once per `verify.sh` (the seed
+step it hangs off is `NO_SEED=1`-skipped for the rest of the loop). Compared
+line-ending-normalised, not byte-for-byte: the `py` launcher writes CRLF on Windows,
+so it is *content* identity we assert (verified the assertion has teeth — an injected
+byte is caught — and that a clean export passes).
+
+**B.5 done.** `.github/workflows/verify.yml` runs on every push/PR to `main`: it
+brings the two engines up via the SAME `docker-compose.yml` a reviewer uses (not
+GitHub `services:` — the seed path shells in with `docker compose exec mssql`, so
+the containers must be compose-managed), waits on both healthchecks, then runs
+`gates/verify.sh` + `gates/mutation-check.sh` + the harness `--dry-run`, all with
+`PYTHON=python3` and no model. The seed is self-contained (`relational.sql` drops
+and recreates the DB from fixed literals — no 121 MB `.bak` restore needed in CI).
+Two portability fixes this needed: the unit tests hardcoded the Windows `py`
+launcher for their `canonicalise.py` shell-out — now they resolve `$PYTHON` → `py`
+→ `python3`; and the README status block, stale at "one showcase proc / 5-5 / 5-5",
+was reconciled to the 2-proc / 6-6 / 8-8 reality alongside the new badge on line 1.
+*(Making it a strictly **required** check is a one-time branch-protection setting in
+the repo UI, which a workflow cannot set for itself.)*
 
 ### B.3 — Minimal real eval harness + one honest result  ⭐ highest ROI
 **Problem.** The third pillar of the thesis — "measurement that proves it did" —

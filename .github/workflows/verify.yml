@@ -1,0 +1,103 @@
+# The gate, in CI (B.5 / Phase-5 task 5.2). The whole pitch of this repo is that a
+# deterministic gate reproduces the correctness verdict with no model in the loop —
+# so the gate has to be the thing automation runs on every push, not just something
+# a reviewer *could* run locally. A green check here is GitHub vouching for exactly
+# the command the walkthrough tells a reader to run themselves.
+#
+# What it does, in order:
+#   1. Bring up the two engines the artifact converts between, via the SAME
+#      docker-compose.yml a reviewer uses (not GitHub `services:` — the seed path
+#      shells in with `docker compose exec mssql`, so the containers must be
+#      compose-managed for that to resolve).
+#   2. Wait for both healthchecks (compose already defines them).
+#   3. gates/verify.sh   — build + unit + differential vs the frozen golden, for
+#      every proc in the manifest. Includes the B.6 seed-identity assertion.
+#   4. gates/mutation-check.sh — prove the differential has teeth: inject the known
+#      bug catalogue and require every mutant caught.
+# No model is called anywhere here; the run costs nothing but runner minutes.
+name: verify
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'gates/**'
+      - 'generated/**'
+      - 'corpus/**'
+      - 'evals/**'
+      - '.claude/hooks/**'
+      - 'docker-compose.yml'
+      - '.github/workflows/verify.yml'
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    # The gate scripts default to the Windows `py` launcher; on Linux there is no
+    # `py`. PYTHON=python3 is honoured by every gate script and by the unit tests'
+    # canonicalise shell-out, so one env var switches the whole suite to the runner.
+    env:
+      PYTHON: python3
+      MONGO_URI: mongodb://localhost:37017/wwi
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Write .env for docker-compose
+        run: |
+          # A non-default SA password that satisfies SQL Server complexity. Only
+          # ever exists on the runner; nothing here is a real secret (a throwaway
+          # dev engine, torn down with the job).
+          cat > .env <<'ENV'
+          MSSQL_SA_PASSWORD=Sql2Service!ci
+          MSSQL_HOST_PORT=11433
+          MONGO_HOST_PORT=37017
+          ENV
+
+      - name: Bring up SQL Server + Mongo
+        run: docker compose up -d mssql mongo
+
+      - name: Wait for both engines healthy
+        run: |
+          # Poll compose health rather than sleeping a fixed time — SQL Server's
+          # first start is the slow one and varies run to run.
+          deadline=$((SECONDS + 240))
+          for svc in mssql mongo; do
+            until [ "$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q $svc)" 2>/dev/null)" = "healthy" ]; do
+              [ $SECONDS -lt $deadline ] || { echo "::error::$svc never became healthy"; docker compose logs $svc | tail -50; exit 1; }
+              sleep 5
+            done
+            echo "$svc healthy"
+          done
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pymongo (seed loader)
+        run: python3 -m pip install --quiet pymongo
+
+      - name: Gate — verify (build + unit + differential, no model)
+        run: bash gates/verify.sh
+
+      - name: Gate — mutation check (prove the differential has teeth)
+        run: bash gates/mutation-check.sh
+
+      - name: Harness scaffold — dry run (no model, proves the eval plumbing)
+        run: python3 evals/harness.py --dry-run
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

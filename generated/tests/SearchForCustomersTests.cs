@@ -118,9 +118,14 @@ public sealed class SearchForCustomersTests : IDisposable
     private string Canonicalise(string json)
     {
         var script = Path.Combine(_repoRoot, "corpus", "canonicalise.py");
+        // Resolve the Python launcher the same way the gate scripts do: honour
+        // $PYTHON, else the Windows `py` launcher, else `python3` (Linux CI has no
+        // `py`). Keeps one test suite green on a dev box and on the ubuntu runner.
+        var python = Environment.GetEnvironmentVariable("PYTHON")
+                     ?? (OperatingSystem.IsWindows() ? "py" : "python3");
         var psi = new ProcessStartInfo
         {
-            FileName = "py",
+            FileName = python,
             RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,

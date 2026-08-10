@@ -80,6 +80,28 @@ if [ "${NO_SEED:-0}" != "1" ]; then
   log "seeding Mongo from relational.sql"
   bash corpus/seed/seed-mongo.sh >/dev/null 2>&1 \
     || die "seed-mongo.sh failed (engines up? pymongo installed?)"
+
+  # SEED-IDENTITY ASSERTION (B.6). seed-mongo.sh re-exports relational.json from a
+  # freshly-reseeded SQL Server; the golden was captured from an EARLIER export.
+  # The whole non-circularity story rests on both stores descending from ONE seed —
+  # but if this container's SQL Server exports even subtly differently (collation,
+  # geography WKT, a float/decimal edge), the Mongo side drifts from golden silently
+  # and every case could still "match" a drifted oracle. So diff the just-regenerated
+  # export against the committed copy the golden derived from, and fail loudly on any
+  # drift. Compare line-ending-normalised (the `py` launcher writes CRLF on Windows):
+  # it is CONTENT identity we assert, not byte identity across OSes.
+  REL_JSON="corpus/seed/relational.json"
+  if git rev-parse --show-toplevel >/dev/null 2>&1 && git ls-files --error-unmatch "$REL_JSON" >/dev/null 2>&1; then
+    if ! diff <(git show "HEAD:$REL_JSON" | tr -d '\r') <(tr -d '\r' < "$REL_JSON") >/dev/null 2>&1; then
+      printf '\033[1;31m[differential] FAIL:\033[0m seed drift — the freshly exported %s\n' "$REL_JSON" >&2
+      printf '  differs from the committed copy the golden was captured from (ADR-0001/0003).\n' >&2
+      printf '  This container'\''s SQL Server produces a different export; the golden oracle no\n' >&2
+      printf '  longer describes the seed Mongo is loaded from. Do NOT trust a green below.\n' >&2
+      git --no-pager diff --no-index <(git show "HEAD:$REL_JSON" | tr -d '\r') <(tr -d '\r' < "$REL_JSON") 2>/dev/null | head -40 >&2 || true
+      die "seed-identity assertion failed (B.6): relational.json drifted from committed"
+    fi
+    log "seed-identity OK — regenerated relational.json matches the committed seed"
+  fi
 fi
 
 # 2. Build ONCE (Release) and locate the compiled binary. Never `dotnet run`.
