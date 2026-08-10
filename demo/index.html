@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>sql-to-service — a guided walkthrough</title>
+<style>
+  /* ---- claude.ai-flavoured palette: warm ivory, clay accent, ink text ---- */
+  :root {
+    --paper:   #faf9f5;
+    --paper-2: #f2f0e9;
+    --card:    #ffffff;
+    --ink:     #1f1e1d;
+    --ink-2:   #55524c;
+    --ink-3:   #86817a;
+    --clay:    #cc785c;
+    --clay-d:  #b4593d;
+    --line:    #e7e3d9;
+    --good:    #4f7a52;
+    --good-bg: #eef4ee;
+    --warn:    #9a6a1c;
+    --warn-bg: #f7efdd;
+    --code-bg: #1f1e1d;
+    --code-fg: #f0ede4;
+    --code-dim:#a7a299;
+    --radius:  16px;
+    --shadow:  0 1px 2px rgba(31,30,29,.06), 0 8px 30px rgba(31,30,29,.07);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  code, pre, .mono { font-family: "SFMono-Regular", ui-monospace, "Cascadia Code", "Consolas", "Liberation Mono", monospace; }
+
+  /* ---- shell ---- */
+  .app { display: grid; grid-template-columns: 288px 1fr; min-height: 100vh; }
+
+  /* ---- sidebar / table of contents ---- */
+  aside {
+    background: var(--paper-2);
+    border-right: 1px solid var(--line);
+    padding: 26px 20px;
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .spark {
+    width: 26px; height: 26px; flex: none;
+    background: var(--clay); border-radius: 7px;
+    display: grid; place-items: center; color: #fff; font-weight: 700;
+  }
+  .brand h1 { font-size: 15px; margin: 0; letter-spacing: .2px; }
+  .brand .sub { font-size: 12px; color: var(--ink-3); margin: 0; }
+  nav { margin-top: 22px; }
+  nav a {
+    display: flex; gap: 10px; align-items: baseline;
+    text-decoration: none; color: var(--ink-2);
+    padding: 8px 10px; border-radius: 10px; font-size: 13.5px;
+    cursor: pointer; transition: background .15s, color .15s;
+  }
+  nav a .n { color: var(--ink-3); font-size: 12px; width: 20px; flex: none; text-align: right; }
+  nav a:hover { background: #eae7dd; color: var(--ink); }
+  nav a.active { background: var(--clay); color: #fff; }
+  nav a.active .n { color: rgba(255,255,255,.8); }
+
+  /* ---- main / slide stage ---- */
+  main { display: flex; flex-direction: column; align-items: center; padding: 48px 40px 120px; }
+  .slide { display: none; width: 100%; max-width: 820px; animation: rise .28s ease both; }
+  .slide.show { display: block; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  .kicker { color: var(--clay-d); font-weight: 600; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; margin: 0 0 10px; }
+  h2.title { font-size: 30px; line-height: 1.2; margin: 0 0 14px; letter-spacing: -.01em; }
+  .lede { font-size: 18px; color: var(--ink-2); margin: 0 0 22px; }
+  p { margin: 0 0 14px; }
+  .muted { color: var(--ink-3); }
+  strong { color: var(--ink); }
+
+  /* ---- do / check cards ---- */
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 20px; margin: 16px 0; }
+  .card h3 { margin: 0 0 6px; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+  .card.do h3   { color: var(--clay-d); }
+  .card.check h3 { color: var(--good); }
+  .pill { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .card.do  .pill { background: #f6e7e0; color: var(--clay-d); }
+  .card.check .pill { background: var(--good-bg); color: var(--good); }
+
+  pre {
+    background: var(--code-bg); color: var(--code-fg);
+    border-radius: 12px; padding: 14px 16px; overflow-x: auto;
+    font-size: 13px; line-height: 1.55; margin: 8px 0 4px;
+  }
+  pre .c { color: var(--code-dim); }      /* comment / prompt */
+  pre .k { color: #e0a58f; }               /* clay-ish keyword */
+  pre .g { color: #9fd0a3; }               /* green good output */
+  pre b  { color: #fff; font-weight: 600; }
+  p code, li code { background: var(--paper-2); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; font-size: 13px; }
+
+  .note { border-left: 3px solid var(--clay); background: #fbf3ef; border-radius: 0 10px 10px 0; padding: 12px 16px; margin: 16px 0; font-size: 14.5px; color: var(--ink-2); }
+  .warn { border-left: 3px solid var(--warn); background: var(--warn-bg); border-radius: 0 10px 10px 0; padding: 12px 16px; margin: 16px 0; font-size: 14.5px; color: #6b4e14; }
+
+  ul.clean { margin: 6px 0 14px; padding-left: 20px; }
+  ul.clean li { margin: 6px 0; }
+
+  table.map { width: 100%; border-collapse: collapse; margin: 8px 0 6px; font-size: 14px; }
+  table.map td { border-top: 1px solid var(--line); padding: 9px 8px; vertical-align: top; }
+  table.map td.p { white-space: nowrap; color: var(--clay-d); font-family: ui-monospace, monospace; font-size: 12.5px; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 900px) { .app { grid-template-columns: 1fr; } aside { position: static; height: auto; } .grid2 { grid-template-columns: 1fr; } }
+
+  /* ---- footer nav ---- */
+  .foot { position: fixed; right: 0; bottom: 0; left: 288px; display: flex; align-items: center; justify-content: space-between;
+          padding: 14px 40px; background: linear-gradient(180deg, rgba(250,249,245,0), var(--paper) 40%); }
+  @media (max-width: 900px) { .foot { left: 0; } }
+  .btn { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 10px; padding: 9px 16px; font-size: 14px; cursor: pointer; box-shadow: var(--shadow); }
+  .btn:hover { border-color: var(--clay); color: var(--clay-d); }
+  .btn.primary { background: var(--clay); color: #fff; border-color: var(--clay); }
+  .btn.primary:hover { background: var(--clay-d); color: #fff; }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .progress { flex: 1; height: 5px; background: var(--line); border-radius: 999px; margin: 0 20px; overflow: hidden; }
+  .progress > i { display: block; height: 100%; background: var(--clay); border-radius: 999px; transition: width .3s; }
+  .count { font-size: 12.5px; color: var(--ink-3); min-width: 52px; text-align: center; }
+  kbd { font: 11px ui-monospace, monospace; background: var(--paper-2); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 1px 6px; color: var(--ink-2); }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="brand">
+      <div class="spark">↺</div>
+      <div>
+        <h1>sql-to-service</h1>
+        <p class="sub">A guided walkthrough</p>
+      </div>
+    </div>
+    <nav id="toc"><!-- filled by JS --></nav>
+  </aside>
+
+  <main id="stage">
+
+    <!-- 0 -->
+    <section class="slide" data-title="Overview">
+      <p class="kicker">The one-sentence version</p>
+      <h2 class="title">Making an unreliable AI trustworthy on a real migration</h2>
+      <p class="lede">Converting legacy T-SQL stored procedures into a .NET&nbsp;+&nbsp;MongoDB service is the <em>vehicle</em>. The point is the harness around it: an independent oracle that catches the model when it is confidently wrong, and measurement that proves it did.</p>
+      <div class="note">This deck walks the repository the way a reviewer should: each step is a <strong>Do</strong> (what to run) paired with a <strong>Check</strong> (what output proves it worked). Nothing here needs a model API key until the very last, clearly-marked, paid step.</div>
+      <p>Three claims carry the whole thing — keep them in mind as you go:</p>
+      <ul class="clean">
+        <li><strong>A non-circular gate.</strong> The correctness oracle is captured from the <em>original</em> procedure <em>before any model runs</em>, so the AI cannot collude with its own judge.</li>
+        <li><strong>Agentic engineering, not a prompt.</strong> Staged Claude Code subagents with separated context, governed by skills, gated by hooks.</li>
+        <li><strong>Honest measurement.</strong> A harness runs the real agent headless and reports accuracy <em>and</em> cost — failures included.</li>
+      </ul>
+      <p class="muted">Navigate with the sidebar, the buttons below, or <kbd>←</kbd>&nbsp;<kbd>→</kbd> arrow keys.</p>
+    </section>
+
+    <!-- 1 -->
+    <section class="slide" data-title="The map">
+      <p class="kicker">Orientation</p>
+      <h2 class="title">What lives where</h2>
+      <p class="lede">The repo is designed to be judged <em>without running it</em>. Follow one conversion end to end, entirely in committed files.</p>
+      <table class="map">
+        <tr><td class="p">corpus/procs/</td><td>Original T-SQL procedures — <strong>the input</strong>. 10 procedures (one <code>Website.SearchFor*</code> showcase + nine <code>Integration.Get*Updates</code>).</td></tr>
+        <tr><td class="p">corpus/golden/</td><td>Output captured from the originals <strong>before any model</strong> — the oracle. 67 golden files across all cases.</td></tr>
+        <tr><td class="p">corpus/seed/</td><td>Relational seed + the <em>fixed</em> migration that produces the Mongo seed (a pure function of the relational data).</td></tr>
+        <tr><td class="p">.claude/</td><td><strong>The engineering.</strong> <code>agents/</code> (4 subagents), <code>skills/</code> (4 standards), <code>settings.json</code> + <code>hooks/</code> (the in-loop gates).</td></tr>
+        <tr><td class="p">gates/</td><td>Deterministic tools: <code>build · unit · differential · verify · mutation-check</code>. No model in the loop.</td></tr>
+        <tr><td class="p">generated/</td><td>What the agent produced — the showcase <code>SearchForCustomersService.cs</code>, its spec, tests, and review.</td></tr>
+        <tr><td class="p">pipeline/</td><td><code>retry.md</code> — how a gate failure is fed back to the agent (cap 2).</td></tr>
+        <tr><td class="p">docs/</td><td><code>architecture.md</code> and seven ADRs — the decisions the pipeline depends on.</td></tr>
+        <tr><td class="p">evals/</td><td>The harness, its method, and results (Phase 4 — in progress).</td></tr>
+      </table>
+      <div class="note">The four ideas that follow map one-to-one onto <code>docs/adr/</code>. When a step says "see ADR-000X", that file is the full argument.</div>
+    </section>
+
+    <!-- 2 -->
+    <section class="slide" data-title="Prerequisites">
+      <p class="kicker">Step 0</p>
+      <h2 class="title">Prerequisites &amp; standing up the engines</h2>
+      <p class="lede">Two containers on deliberately non-standard ports, plus a host Python and .NET 10. Nothing here calls a model.</p>
+      <div class="card do"><h3><span class="pill">DO</span> Bring up SQL Server + MongoDB</h3>
+<pre><span class="c"># from the repo root</span>
+cp .env.example .env          <span class="c"># set MSSQL_SA_PASSWORD; .env is gitignored</span>
+docker compose up -d          <span class="c"># mssql → :11433 · mongo → :37017</span>
+./corpus/restore.sh           <span class="c"># restore + seed the sample DB (pinned .bak, SHA-checked)</span></pre></div>
+      <div class="card check"><h3><span class="pill">CHECK</span> Both engines are healthy</h3>
+<pre>docker compose ps
+<span class="c"># STATUS should read "healthy" for both mssql and mongo</span>
+<span class="g">mssql   ... (healthy)   0.0.0.0:11433->1433/tcp</span>
+<span class="g">mongo   ... (healthy)   0.0.0.0:37017->27017/tcp</span></pre></div>
+      <div class="warn"><strong>Ports are non-standard on purpose</strong> — <code>11433</code> / <code>37017</code> avoid colliding with a SQL Server or Mongo you may already run. Also on your PATH: the <code>py</code> launcher (Python is run on the host, not a container — some Docker Hub images are AV-blocked here) and the .NET 10 SDK.</div>
+    </section>
+
+    <!-- 3 -->
+    <section class="slide" data-title="Non-circular gate">
+      <p class="kicker">Step 1 · The load-bearing idea · ADR-0001</p>
+      <h2 class="title">The oracle is frozen before the AI exists</h2>
+      <p class="lede">Every "the AI tested its own work" demo fails the same way: the model writes the code <em>and</em> the tests, so both encode the same misunderstanding and agree while both are wrong.</p>
+      <p>Here the golden output is captured by running the <strong>original, verbatim T-SQL</strong> on the seeded data — with <em>no model involved</em> — and committed. There is no path for the model to influence its own judge.</p>
+      <div class="card do"><h3><span class="pill">DO</span> Look at the oracle for the showcase</h3>
+<pre>ls corpus/golden/ | grep SearchForCustomers</pre></div>
+      <div class="card check"><h3><span class="pill">CHECK</span> One golden file per behavioural case</h3>
+<pre><span class="g">Website.SearchForCustomers__contact-name-match.json</span>
+<span class="g">Website.SearchForCustomers__null-contact-name-match.json</span>
+<span class="g">Website.SearchForCustomers__toys-both.json</span>
+<span class="g">Website.SearchForCustomers__top-1-pagination.json</span>
+<span class="g">Website.SearchForCustomers__no-match-empty.json</span></pre>
+      <p class="muted" style="margin:6px 0 0">Each name is a case the seed was designed to <em>discriminate</em> — a match, a null contact, a two-way match, a pagination boundary, and an empty result. If the seed can't tell two behaviours apart, the gate can't either (ADR-0002).</p></div>
+      <div class="note">Want proof the oracle is <em>stable</em>, not just present? <code>bash gates/verify-stable.sh</code> captures the golden twice into temp dirs and diffs them byte-for-byte. Deterministic seed (fixed literals) ⇒ identical captures.</div>
+    </section>
+
+    <!-- 4 -->
+    <section class="slide" data-title="Mechanical seed">
+      <p class="kicker">Step 2 · ADR-0003</p>
+      <h2 class="title">The Mongo side is seeded mechanically</h2>
+      <p class="lede">A subtle way to cheat would be to hand-fit the MongoDB documents so the generated service looks right. So the Mongo seed is a <strong>pure function of the relational seed</strong>: one table → one collection, columns verbatim, written by fixed code before any conversion.</p>
+      <div class="card do"><h3><span class="pill">DO</span> Run the three-step seed loop</h3>
+<pre>bash corpus/seed/seed-mongo.sh
+<span class="c"># relational.sql → export-relational.py → relational.json → to_mongo.py → Mongo</span></pre></div>
+      <div class="card check"><h3><span class="pill">CHECK</span> A flat, faithful mirror of the relational seed</h3>
+<pre><span class="c">[seed-mongo] applying relational seed → ...</span>
+<span class="c">[seed-mongo] exporting every base table → relational.json</span>
+<span class="c">[seed-mongo] loading Mongo (...:37017) from relational.json</span>
+<span class="g">[seed-mongo] OK:</span> Mongo seeded from relational.sql — both stores descend from one seed</pre>
+      <p class="muted" style="margin:6px 0 0">One collection per base table; column names carried over verbatim; <code>decimal</code> → <code>Decimal128</code>. The service reads <em>this</em>, never a hand-authored fixture.</p></div>
+      <div class="note">This is why the differential is trustworthy on <em>both</em> ends: the T-SQL side is the frozen golden, and the Mongo side isn't quietly tailored to the answer — it's a committed, re-runnable transform anyone can audit in <code>corpus/seed/</code>.</div>
+    </section>
+
+    <!-- 5 -->
+    <section class="slide" data-title="Subagents & skills">
+      <p class="kicker">Step 3 · ADR-0004 · the four primitives</p>
+      <h2 class="title">The AI works in stages, armed with skills</h2>
+      <p class="lede">This is where "AI engineering" stops being a slogan. Each stage is a real Claude Code mechanism — open <code>.claude/</code> and you recognise your own tools.</p>
+      <div class="grid2">
+        <div class="card"><h3 style="color:var(--clay-d)">Subagents · .claude/agents/</h3>
+          <ul class="clean" style="margin:0">
+            <li><strong>analyst</strong> — read-only + spec write, <em>no code</em></li>
+            <li><strong>implementer</strong> — spec → .NET + Mongo</li>
+            <li><strong>test-author</strong> — separate context, writes tests</li>
+            <li><strong>reviewer</strong> — <em>no</em> Write/Edit; reads, loads skills, runs the gate</li>
+          </ul></div>
+        <div class="card"><h3 style="color:var(--clay-d)">Skills · .claude/skills/</h3>
+          <ul class="clean" style="margin:0">
+            <li><strong>tsql-semantics</strong></li>
+            <li><strong>decimal-mapping</strong> → Decimal128 @ scale 4</li>
+            <li><strong>document-modelling</strong></li>
+            <li><strong>dotnet-service-shape</strong></li>
+          </ul></div>
+      </div>
+      <p>The separation is the point: the <code>test-author</code> can't inherit the <code>implementer</code>'s blind spot because it never sees what was convenient to write. Skills are <em>versioned files</em> the reviewer checks against — not an ephemeral prompt.</p>
+      <div class="card check"><h3><span class="pill">CHECK</span> They're real, separated definitions</h3>
+<pre>ls .claude/agents/          <span class="c"># analyst · implementer · test-author · reviewer</span>
+ls .claude/skills/          <span class="c"># four SKILL.md standards</span>
+cat generated/Website.SearchForCustomers.spec.md   <span class="c"># the analyst's output</span>
+cat generated/Website.SearchForCustomers.review.md <span class="c"># the reviewer's verdict</span></pre></div>
+    </section>
+
+    <!-- 6 -->
+    <section class="slide" data-title="The gates">
+      <p class="kicker">Step 4 · ADR-0005 · the deterministic judge</p>
+      <h2 class="title">Run the gate — no model required</h2>
+      <p class="lede">Four POSIX-sh tools, callable by a hook, a human, or CI. <code>verify.sh</code> chains them and reproduces the verdict with zero model calls — this is the audit.</p>
+      <div class="card do"><h3><span class="pill">DO</span> Reproduce the published verdict</h3>
+<pre>bash gates/verify.sh          <span class="c"># build → unit → differential, fail-fast</span></pre>
+      <p class="muted" style="margin:6px 0 0">Or run a single stage: <code>gates/build.sh</code>, <code>gates/unit.sh</code>, <code>gates/differential.sh</code>.</p></div>
+      <div class="card check"><h3><span class="pill">CHECK</span> Green on the showcase</h3>
+<pre><span class="c">[verify] 1/3 build</span>
+<span class="g">[build] PASS:</span> ...
+<span class="c">[verify] 2/3 unit tests</span>
+<span class="g">[unit] PASS:</span> unit tests green            <span class="c"># 5 InlineData + 1 Fact = 6</span>
+<span class="c">[verify] 3/3 differential vs golden</span>
+<span class="g">[differential] PASS:</span> all 5 cases identical to golden
+<span class="g">[verify] PASS:</span> ... verdict reproduced with no model calls</pre>
+      <p class="muted" style="margin:6px 0 0">The differential builds <em>once</em>, then runs the compiled binary so stdout is clean JSON, and compares each case to golden through the gate's own <code>canonicalise.py</code> (decimals to fixed scale-4 strings, keys sorted).</p></div>
+      <div class="warn"><strong>Why this matters:</strong> the agent's <em>own</em> generated tests (the 6/6) never have the authority to declare the conversion correct — they could be wrong in the same direction as the code. Only the <strong>differential</strong> against the pre-model golden can say that.</div>
+    </section>
+
+    <!-- 7 -->
+    <section class="slide" data-title="In-loop hooks">
+      <p class="kicker">Step 5 · the gates, wired into the agent loop</p>
+      <h2 class="title">Hooks gate every transition automatically</h2>
+      <p class="lede">Standalone gates are the audit; hooks are what make the loop <em>self-correcting</em>. They live in <code>.claude/settings.json</code> and feed failures straight back via the exit-2 convention.</p>
+      <table class="map">
+        <tr><td class="p">PostToolUse</td><td>After any <code>.cs/.csproj</code> write under <code>generated/</code>, <strong>build</strong> — a compile break surfaces the instant it's introduced, not three tool-calls later.</td></tr>
+        <tr><td class="p">Stop</td><td>The agent may not declare itself done while the <strong>differential is red</strong>. The terminal correctness gate.</td></tr>
+        <tr><td class="p">PreToolUse</td><td><code>guard-path</code> fails <strong>closed</strong>: writes are allowed only under <code>generated/</code>. So a green gate can never mean "the agent edited the oracle to match its output."</td></tr>
+      </table>
+      <div class="card do"><h3><span class="pill">DO</span> See the wiring, then pipe-test the guard</h3>
+<pre>cat .claude/settings.json
+
+<span class="c"># the guard blocks a write to the oracle…  (ROOT is an absolute repo path)</span>
+ROOT="$(pwd)"   <span class="c"># on git-bash use: ROOT="$(pwd -W)"</span>
+printf '{"tool_name":"Write","tool_input":{"file_path":"%s/corpus/x"}}' "$ROOT" \
+  | CLAUDE_PROJECT_DIR="$ROOT" bash .claude/hooks/guard-path.sh; echo "exit=$?"</pre></div>
+      <div class="card check"><h3><span class="pill">CHECK</span> Blocked outside generated/, allowed inside</h3>
+<pre><span class="g">[guard-path] BLOCKED:</span> ... is outside the allowed folders
+exit=<b>2</b>
+<span class="c"># swap the path to .../generated/x → exit=0 (allowed)</span></pre></div>
+    </section>
+
+    <!-- 8 -->
+    <section class="slide" data-title="Proven teeth">
+      <p class="kicker">Step 6 · ADR-0006 · mandatory</p>
+      <h2 class="title">Prove the gate has teeth</h2>
+      <p class="lede">A differential that has never been shown to <em>fail</em> on a wrong conversion is an untested gate — its green is worth nothing. So we inject known bugs and require the gate to catch every one.</p>
+      <div class="card do"><h3><span class="pill">DO</span> Run the mutation check</h3>
+<pre>bash gates/mutation-check.sh
+<span class="c"># injects 5 one-line bugs into the service, one at a time,</span>
+<span class="c"># and requires the differential to turn RED on each</span></pre></div>
+      <div class="card check"><h3><span class="pill">CHECK</span> Every mutant caught</h3>
+<pre>  <span class="g">✓ drop-where</span>        caught (differential red)
+  <span class="g">✓ break-order</span>      caught (differential red)
+  <span class="g">✓ shift-pagination</span> caught (differential red)
+  <span class="g">✓ drop-join</span>        caught (differential red)
+  <span class="g">✓ type-coercion</span>    caught (differential red)
+<span class="g">[mutation] PASS:</span> all 5 mutants caught — the differential has teeth</pre></div>
+      <div class="note"><strong>Honest scope note (from the script header, not hidden):</strong> ADR-0006 also names a <code>decimal(18,4)→float</code> precision mutant. This showcase proc returns no decimal column, so <code>type-coercion</code> stands in for the wrong-numeric-representation class; true precision-loss is exercised when a money-returning <code>Integration.Get*Updates</code> proc is converted. A single <em>uncaught</em> mutant would point at exactly one of two causes: the comparison is too loose, or the seed has a branch hole (ADR-0002).</div>
+    </section>
+
+    <!-- 9 -->
+    <section class="slide" data-title="Retry protocol">
+      <p class="kicker">Step 7 · pipeline/retry.md</p>
+      <h2 class="title">When a gate says "no"</h2>
+      <p class="lede">A failure has to reach the agent as a correction it can act on — not a silent dead end. The error path is split into two halves on purpose.</p>
+      <div class="grid2">
+        <div class="card"><h3 style="color:var(--clay-d)">In-loop · the hooks</h3><p style="margin:0">Fast, memoryless corrections. <code>PostToolUse</code> hands back the compile error; <code>Stop</code> hands back the failing differential cases. Same turn, immediately.</p></div>
+        <div class="card"><h3 style="color:var(--clay-d)">Across attempts · the harness</h3><p style="margin:0">The <strong>cap of 2</strong> lives here, not in the hooks — hooks have no memory. After the cap, the harness stops and records an <em>honest failure</em>.</p></div>
+      </div>
+      <p>The cap is what turns "never lies" into "never lies <em>and</em> always terminates." A proc that needed three tries is never silently upgraded to a pass. And a <code>guard-path</code> block is a <em>refusal</em>, not a retry — the fix is to write a different file, not to try the same illegal write again.</p>
+      <div class="card check"><h3><span class="pill">CHECK</span> Read the protocol</h3>
+<pre>cat pipeline/retry.md</pre></div>
+    </section>
+
+    <!-- 10 -->
+    <section class="slide" data-title="Measure (paid)">
+      <p class="kicker">Step 8 · Phase 4 · optional &amp; paid</p>
+      <h2 class="title">Let the real agent run — and measure it</h2>
+      <p class="lede">Everything so far ran with no model calls. The last step is the opt-in, paid one: run Claude Code headless over the corpus and collect accuracy <em>and</em> cost from real executions.</p>
+      <div class="warn"><strong>This is the only step that spends money.</strong> The harness (<code>evals/harness.py</code>) is Phase 4 and still in progress — the method is pre-registered so the numbers are falsifiable before they exist. See <code>evals/PREREGISTRATION.md</code>.</div>
+      <div class="card do"><h3><span class="pill">DO</span> When the harness lands</h3>
+<pre><span class="c"># reproduce results from committed artifacts, NO model calls:</span>
+bash gates/verify.sh
+<span class="c"># re-run the agent end to end (PAID, opt-in):</span>
+./run.sh</pre></div>
+      <div class="card check"><h3><span class="pill">CHECK</span> Honest reporting, failures included</h3>
+<pre><span class="c"># k=3 runs per proc → distribution, flaky flags, $ per proc</span>
+<span class="c"># Table 1: headline accuracy + cost</span>
+<span class="c"># Table 2: failure taxonomy — a run with zero failures is a</span>
+<span class="c">#          finding to investigate, not a win</span></pre></div>
+    </section>
+
+    <!-- 11 -->
+    <section class="slide" data-title="Recap">
+      <p class="kicker">The through-line</p>
+      <h2 class="title">One sentence, end to end</h2>
+      <p class="lede">Golden captured before the AI → subagents do the work in stages → hooks gate every transition through deterministic tools → the harness measures honestly.</p>
+      <table class="map">
+        <tr><td class="p">1 · gate</td><td>Non-circular oracle, frozen before any model — <code>corpus/golden/</code> (ADR-0001)</td></tr>
+        <tr><td class="p">2 · seed</td><td>Mongo is a pure function of the relational seed — <code>corpus/seed/</code> (ADR-0003)</td></tr>
+        <tr><td class="p">3 · agents</td><td>Four subagents + four skills, separated context — <code>.claude/</code> (ADR-0004)</td></tr>
+        <tr><td class="p">4 · gates</td><td><code>verify.sh</code> reproduces the verdict, no model — <code>gates/</code> (ADR-0005)</td></tr>
+        <tr><td class="p">5 · hooks</td><td>Every transition gated in-loop — <code>.claude/settings.json</code></td></tr>
+        <tr><td class="p">6 · teeth</td><td>5/5 mutants caught — <code>gates/mutation-check.sh</code> (ADR-0006)</td></tr>
+        <tr><td class="p">7 · retry</td><td>Failures fed back, cap 2 — <code>pipeline/retry.md</code></td></tr>
+        <tr><td class="p">8 · measure</td><td>Real headless runs, cost + failures — <code>evals/</code> (Phase 4)</td></tr>
+      </table>
+      <div class="note">The fastest one-command sanity check, start to finish: <code>docker compose up -d</code> → <code>bash gates/verify.sh</code> → <code>bash gates/mutation-check.sh</code>. Green, then teeth — with no model in the loop.</div>
+    </section>
+
+  </main>
+</div>
+
+<div class="foot">
+  <button class="btn" id="prev">← Back</button>
+  <div class="progress"><i id="bar"></i></div>
+  <span class="count" id="count"></span>
+  <button class="btn primary" id="next">Next →</button>
+</div>
+
+<script>
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var toc = document.getElementById('toc');
+  var bar = document.getElementById('bar');
+  var count = document.getElementById('count');
+  var prev = document.getElementById('prev');
+  var next = document.getElementById('next');
+  var i = 0;
+
+  slides.forEach(function (s, idx) {
+    var a = document.createElement('a');
+    a.innerHTML = '<span class="n">' + idx + '</span><span>' + s.dataset.title + '</span>';
+    a.onclick = function () { go(idx); };
+    toc.appendChild(a);
+  });
+  var links = Array.prototype.slice.call(toc.children);
+
+  function go(n) {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach(function (s, idx) { s.classList.toggle('show', idx === i); });
+    links.forEach(function (a, idx) { a.classList.toggle('active', idx === i); });
+    bar.style.width = ((i) / (slides.length - 1) * 100) + '%';
+    count.textContent = (i + 1) + ' / ' + slides.length;
+    prev.disabled = i === 0;
+    next.disabled = i === slides.length - 1;
+    document.getElementById('stage').scrollTo(0, 0);
+    window.scrollTo(0, 0);
+    if (location.hash !== '#' + i) history.replaceState(null, '', '#' + i);
+  }
+  prev.onclick = function () { go(i - 1); };
+  next.onclick = function () { go(i + 1); };
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight' || e.key === 'PageDown') go(i + 1);
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') go(i - 1);
+  });
+
+  var start = parseInt((location.hash || '#0').slice(1), 10);
+  go(isNaN(start) ? 0 : start);
+</script>
+</body>
+</html>
