@@ -256,8 +256,8 @@
   }
 
   /* ---- header toolbar: theme + language toggles ---- */
-  .bar { display: flex; align-items: center; gap: 8px; margin: 18px 0 2px; }
-  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; background: var(--card); }
+  .bar { position: fixed; top: 16px; right: 20px; z-index: 50; display: flex; align-items: center; gap: 8px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.18); }
   .seg button { border: 0; background: transparent; color: var(--ink-2); font: inherit; font-size: 12px; padding: 5px 10px; cursor: pointer; line-height: 1.4; }
   .seg button + button { border-left: 1px solid var(--line); }
   .seg button.on { background: var(--clay); color: #fff; }
