@@ -186,17 +186,20 @@ Standing the whole thing up is deliberately production-realistic and therefore
 heavy: it restores a public sample database and runs a real agent.
 
 ```sh
-cp env.example .env          # add your model API key; .env is gitignored
+cp .env.example .env         # add your model API key; .env is gitignored
 docker compose up -d         # SQL Server on :11433, MongoDB on :37017
 ./corpus/restore.sh          # restore + seed the sample DB (pinned .bak, SHA-checked)
 ./gates/verify.sh            # build + unit + differential against committed output
                              #   → reproduces the published table, with NO model calls
 ./run.sh                     # optional, PAID: re-run the agent end to end
+                             #   → lands with the Phase-4 harness; see docs/tasks/
 ```
 
 `verify.sh` is the audit: it regenerates the reported results from committed
-artifacts without calling any model. Regeneration (`run.sh`) is a separate,
-opt-in, paid command — nothing surprises you with a bill.
+artifacts without calling any model, and it exists today. Regeneration
+(`run.sh`) is a separate, opt-in, paid command that lands with the Phase-4
+harness (`evals/harness.py`) — so nothing here surprises you with a bill, and
+nothing claims to run before it does.
 
 Ports `11433` / `37017` are non-standard on purpose, to avoid colliding with a
 SQL Server or MongoDB you may already run locally.
@@ -234,4 +237,22 @@ gates/              build · unit · differential · verify (deterministic tools
 generated/          what the agent produced (the vehicle's output)
 evals/              the harness, the method, and the results
 docs/               architecture and decision records (ADRs)
+demo/               a guided, step-by-step walkthrough (open demo/index.html)
 ```
+
+---
+
+## Documentation
+
+Everything, in reading order, is indexed in **[`docs/README.md`](docs/README.md)**
+— the architecture, the seven ADRs, the pipeline's retry protocol, the eval
+preregistration, and the corpus provenance. New here? The **[`demo/`](demo/)**
+walkthrough is the fastest way in.
+
+---
+
+## License
+
+[MIT](LICENSE). The corpus is the public MIT-licensed WideWorldImporters sample
+(see [`corpus/SOURCE.md`](corpus/SOURCE.md)); this repository carries no real
+client, product, or engagement data.

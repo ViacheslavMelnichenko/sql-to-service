@@ -14,6 +14,7 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+.pytest_cache/
 
 # .NET build output — the generated source is committed, the build is not.
 [Bb]in/
