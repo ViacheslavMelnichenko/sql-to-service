@@ -29,9 +29,11 @@ here is real platform mechanism, not a wrapper script pretending to be an agent.
 >   yourself; the [walkthrough](https://viacheslavmelnichenko.github.io/sql-to-service/)
 >   shows each one paired with its command.
 > - The **eval numbers** — corpus-wide accuracy, per-proc cost, the failure
->   taxonomy — do **not** exist yet. They land with the Phase-4 harness
->   (`evals/harness.py`), and where one would go this document says so plainly
->   rather than showing a placeholder.
+>   taxonomy — have **begun** to land: the Phase-4 harness (`evals/harness.py`) has
+>   produced its first live sample (`run-001.sample-01.json` — three procs, $2.84–
+>   $4.39 each, all cleared), but this is **k=1 of the pre-registered k=3**, so the
+>   corpus-wide distribution is still settling. Where a number is not yet measured
+>   this document says so plainly rather than showing a placeholder.
 
 ---
 
@@ -52,12 +54,12 @@ Three things carry that claim:
 2. **Agentic engineering, not a prompt.** Staged subagents with separated context,
    governed by skills, gated by hooks — the way a production agent is actually
    built.
-3. **Honest measurement.** A harness (`evals/harness.py`, Phase 4 — the scaffold
-   runs today, the live measurement is the next step) is built to run the real
-   agent headless over each procedure and report accuracy *and* cost, failures
-   included — because a result with no failures is a finding to investigate, not a
-   win. The design is deliberate about *not* claiming the corpus-wide numbers before
-   that run happens.
+3. **Honest measurement.** A harness (`evals/harness.py`, Phase 4 — running now, with
+   its first live sample in) runs the real agent headless over each procedure and
+   reports accuracy *and* cost, failures included — because a result with no failures
+   is a finding to investigate, not a win (the first sample's 3/3 sweep is treated as
+   exactly that, in `evals/results/summary.md`). The design is deliberate about *not*
+   claiming the corpus-wide numbers before the full k=3 distribution completes.
 
 ---
 
@@ -178,12 +180,13 @@ flowchart TB
 | **Hooks** | `.claude/settings.json` | `PostToolUse` builds after every write; `Stop` runs the differential before the agent may finish; `PreToolUse` blocks writes outside allowed folders. Gates run *in the loop*, not after the fact. |
 | **Tools** | `gates/*.sh` (Bash now; an MCP server is a planned stretch) | The gate is a deterministic tool the agent *calls* — the model never grades itself. |
 
-The harness is built to run Claude Code **headless** (`claude -p …`) once per
-procedure and collect the real token cost from each run, so the reported numbers
-will come from actual agent executions, not mocks. To be exact about what has run:
-the showcase conversion was carried through these four stages **by hand** to prove
-the pipeline end to end; the headless loop that does it autonomously is the harness's
-next step, and no number here is presented as if that loop had already produced it.
+The harness runs Claude Code **headless** (`claude -p …`) once per procedure and
+collects the real token cost from each run, so the reported numbers come from actual
+agent executions, not mocks. To be exact about what has run: the headless loop has
+produced its **first live sample** (`run-001.sample-01.json`) — three procs driven
+end to end by the real agent, each cleared against the frozen golden — and the
+pre-registered **k=3** distribution is in progress (k=1 measured). No number here is
+presented as a settled corpus-wide result before that distribution completes.
 
 ---
 

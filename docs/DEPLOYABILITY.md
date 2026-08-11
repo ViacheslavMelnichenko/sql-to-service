@@ -83,11 +83,13 @@ account this demo uses for convenience. `docs/SECURITY.md` carries the specifics
 
 ## (d) What a proc actually costs to onboard
 
-The demo carried **one** proc through the four stages by hand and gated a second; it
-has not run the harness live, so any per-proc dollar figure would be invented — and
-this project does not invent numbers where a measurement is promised (that is what
-the Phase-4 harness and its pre-registration exist to produce). What *can* be stated
-honestly is the **shape** of the per-proc cost, so a buyer can reason about scale:
+The demo carried procs through the four stages and has now run the harness live for a
+**first sample**: `run-001.sample-01.json` measured three procs at **$2.84–$4.39
+each** (mean $3.64), all cleared on the first attempt. That is a real per-proc dollar
+figure, not an invented one — but it is **k=1 of the pre-registered k=3**, so it is a
+first data point, not a settled cost; the full distribution (and any flakiness) lands
+when the two remaining samples run. What can already be stated honestly is the
+**shape** of the per-proc cost, so a buyer can reason about scale:
 
 - **Free and mechanical, once per proc:** add a `corpus/cases/<Proc>.json` (its
   cases + params + `ordered` flag) and a `generated/runners.json` entry. The gates
@@ -97,21 +99,24 @@ honestly is the **shape** of the per-proc cost, so a buyer can reason about scal
   golden. Deterministic, no model.
 - **The generation:** one headless agent run through the four stages, bounded by the
   retry cap of 2. This is the only step that spends model budget, and its real
-  token/dollar cost per proc is precisely the number the harness is built to
-  measure — deliberately unstated until `run-001.json` exists.
+  token/dollar cost per proc is precisely the number the harness measures — first
+  sample in at $2.84–$4.39/proc (`run-001.sample-01.json`), with the k=3 mean still
+  settling.
 - **The ceiling still applies:** only read-only / deterministic / single-result-set
   procs are in scope for *this* harness (see the applicability-ceiling section of the
   root `README.md` and `corpus/SELECTION.md`). A backlog's stateful and
   non-deterministic procs need a different harness and are a separate estimate.
 
 **Claim to make:** *"Per-proc gate integration is near-zero and free; the generation
-cost is measured, not asserted, and only the tractable proc tier is in scope."*
+cost is measured (first sample ~$3.64/proc), not asserted, and only the tractable
+proc tier is in scope."*
 
 ## The one-line version
 
 The **gate** — the part that makes the result trustworthy — is portable, offline,
 free, and model-agnostic today. The **generator** needs Claude Code API access and a
 data-synthesis step before it touches a real database, and its per-proc cost is a
-measured number this demo has not yet produced. Sold as *that*, it is a defensible
+measured number this demo has now begun to produce (first sample ~$3.64/proc; k=3
+still settling). Sold as *that*, it is a defensible
 capability; sold as "deploy it in your air-gapped environment next week," it is an
 overreach the first technical question would expose.

@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Integration.GetTransactionUpdates. Same minimal service shape as the other
+       converted procs (MongoDB.Driver, no web/DI sprawl), and the same uniform runner
+       contract so gates/differential.sh drives it with no per-proc knowledge:
+       <binary> '<paramsJson>' [mongoUri]. This proc has two datetime2 parameters
+       (@LastCutoff, @NewCutoff), read out of paramsJson by name in the runner. -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <AssemblyName>GetTransactionUpdates</AssemblyName>
+    <RootNamespace>SqlToService.Generated</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MongoDB.Driver" Version="3.1.0" />
+  </ItemGroup>
+
+  <!-- This project compiles ONLY its own service + runner. The SDK's **/*.cs glob
+       would otherwise pull in the other procs' services (extra types, harmless) and —
+       fatally — their Program.cs files (multiple top-level entry points, which do not
+       compile). Enumerate this proc's two files explicitly and disable the glob. -->
+  <PropertyGroup>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="GetTransactionUpdatesService.cs" />
+    <Compile Include="GetTransactionUpdates.Program.cs" />
+  </ItemGroup>
+
+</Project>

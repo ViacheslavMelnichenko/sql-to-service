@@ -124,21 +124,24 @@ And the gate's authority is **proven, not asserted**: `mutation-check.sh`
 
 ## 5. The harness, measuring honestly
 
-> **Status:** planned (Phase 4). The gate below (`verify.sh`, `mutation-check.sh`)
-> exists and runs today; the measurement harness that drives the agent over the
-> corpus does not yet — this section describes what it will do, in the tense of a
-> design, not a finished run.
+> **Status:** built and running (Phase 4). `evals/harness.py` drives the agent over
+> the corpus and has produced its first live sample (`run-001.sample-01.json`,
+> snapshot `claude-opus-4-8`); the pre-registered **k=3** distribution is in
+> progress (k=1 measured). See [`../evals/results/summary.md`](../evals/results/summary.md).
 
-The harness will run Claude Code **headless** (`claude -p …`) once per procedure and
-record, per proc: the differential verdict, retries used, tokens, and cost. Across
-`k=3` runs it will report a **distribution**, flag `flaky` procedures, and build a
-**failure taxonomy** — because a result with no failures is a finding to
-investigate, not a win. A naive single-prompt run will be kept as the **control
-baseline**.
+The harness runs Claude Code **headless** (`claude -p …`) once per procedure and
+records, per proc: the differential verdict, retries used, tokens, and cost. It runs
+once per **sample**; across the pre-registered `k=3` samples,
+[`evals/aggregate.py`](../evals/aggregate.py) reports a **distribution**, flags
+`flaky` procedures, and audits that each sample genuinely regenerated (a 0-turn
+sample is not an independent measurement). A result with no failures is treated as a
+**finding to investigate**, not a win (PREREGISTRATION.md, H3). A naive
+single-prompt run is kept as the **control baseline** (B.4).
 
 The one artifact that cannot be faked is the **analysis paragraph** in
-`evals/results/summary.md`: what the differential failures had in common. Writing
-it truthfully requires having done the work.
+`evals/results/summary.md`: what the run showed, read against the prediction —
+including, when the sweep is clean, *why* that is a caveat rather than a headline.
+Writing it truthfully requires having done the work.
 
 The operational detail — how to actually run this (dry vs live, POSIX vs Windows),
 the prerequisites, and the authentication traps — lives in the runbook,

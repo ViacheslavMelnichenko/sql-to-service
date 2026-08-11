@@ -7,15 +7,20 @@ success criteria to whatever the pipeline happened to produce. If a result
 contradicts a prediction here, the prediction stays and the contradiction is
 reported — that is the point of writing it down first.
 
-> **Status:** registered, pre-run. No results exist yet. Any figure below is a
-> *prediction*, explicitly marked as such.
+> **Status:** registered pre-run; partially executed. The hypotheses and
+> thresholds below were committed before any result existed and are **unchanged**.
+> As of the first live sample (`run-001.sample-01.json`), k=1 of the fixed k=3 is
+> measured — see [`results/summary.md`](results/summary.md). Predictions below stay
+> as written; where a result bears on one, the analysis reports it there rather than
+> editing the prediction here.
 
 ## Fixed before the run
 
 - **Model + version:** Claude Opus (the `claude-opus` family, run via Claude Code
-  headless). The exact dated snapshot id is captured from the first invocation and
-  frozen into `evals/METHOD.md` at run-001 — recorded, not chosen after the fact.
-  Until then this is the intended model, not a pinned one.
+  headless). The exact dated snapshot is captured from the first invocation, not
+  chosen after the fact — **pinned at run-001 as `claude-opus-4-8`** (recorded in
+  `model_snapshot` of every sample file). The gateway model string is
+  `claude-opus-4-8-gateway`.
 - **Sampling:** temperature and top-p fixed and recorded; same for every run.
 - **Corpus:** the procedures selected by `corpus/SELECTION.md`, frozen before the
   run — no procedure added or removed after seeing a result.

@@ -89,8 +89,10 @@ public sealed class SearchForCustomersService
             var customerObj = new Dictionary<string, object>();
             AddIfPresent(customerObj, "CustomerID", CustomerId(c));
             AddIfPresent(customerObj, "CustomerName", customerName);
-            AddIfPresent(customerObj, "PhoneNumber", AsString(c, "PhoneNumber"));
+            // Golden key order is CustomerID, CustomerName, FaxNumber, PhoneNumber
+            // (Fax BEFORE Phone) — not the SELECT-list order. Emit in that order.
             AddIfPresent(customerObj, "FaxNumber", AsString(c, "FaxNumber"));
+            AddIfPresent(customerObj, "PhoneNumber", AsString(c, "PhoneNumber"));
             // "ct" (INNER) is always a populated one-element array.
             customerObj["ct"] = new object[] { cityObj };
 

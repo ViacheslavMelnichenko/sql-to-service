@@ -855,34 +855,33 @@ exit=<b>2</b>
         <p class="sec-eyebrow">Why it matters</p>
         <h3 class="sec-title">The free audit and the paid measurement are different things</h3>
         <p>Every step so far made <em>zero</em> model calls — the whole correctness story is auditable for free. This final step is the opt-in, paid one: run Claude Code headless over the corpus and collect accuracy <em>and</em> cost from real executions. Keeping it separate is the point — you can trust the correctness machinery completely without ever spending a token; the money only buys the <em>measurement of how often the agent gets there on its own</em>.</p>
-        <div class="warn"><strong>This is the only step that spends money, and it hasn't run yet.</strong> The harness (<code>evals/harness.py</code>) is Phase 4 and still in progress. Its method is <em>pre-registered</em> — the hypotheses and thresholds are committed to git <em>before</em> any number exists — so the results can't be retrofitted to look good. See <code>evals/PREREGISTRATION.md</code>.</div>
+        <div class="warn"><strong>This is the only step that spends money, and it has now produced its first live sample.</strong> The harness (<code>evals/harness.py</code>) is built and running: one live sample is measured (<code>run-001.sample-01.json</code>, snapshot <code>claude-opus-4-8</code>), and the pre-registered <code>k=3</code> distribution is still in progress (k=1 so far). Its method is <em>pre-registered</em> — the hypotheses and thresholds are committed to git <em>before</em> any number exists — so the results can't be retrofitted to look good. See <code>evals/PREREGISTRATION.md</code>.</div>
       </section>
 
       <section class="sec">
         <p class="sec-eyebrow">Try it</p>
         <h3 class="sec-title">Free to reproduce; paid to re-run</h3>
-        <div class="card do"><h4><span class="pill">DO</span> When the harness lands</h4>
+        <div class="card do"><h4><span class="pill">DO</span> The harness, now that it runs</h4>
 <pre><span class="c"># reproduce results from committed artifacts, NO model calls:</span>
 bash gates/verify.sh
-<span class="c"># re-run the agent end to end (PAID, opt-in):</span>
-./run.sh</pre></div>
+<span class="c"># re-run the agent end to end (PAID, opt-in — writes the next sample):</span>
+bash evals/run.sh --live</pre></div>
         <p class="muted">Two commands, two very different costs. <code>verify.sh</code> replays the committed result for $0 — that's the audit anyone can run. <code>run.sh</code> is the one that calls the model and bills you; it's opt-in for exactly that reason.</p>
       </section>
 
       <section class="sec">
-        <p class="sec-eyebrow">Reading the output — clearly marked as not-yet-real</p>
-        <h3 class="sec-title">The shape it will report</h3>
-        <div class="card check"><h4><span class="pill">CHECK</span> The shape of what it reports <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink-3)">(illustrative — no run has happened yet)</span></h4>
-<pre><span class="c"># Table 1 — headline: cleared_within_cap + cost, k=3</span>
-proc                              cleared/3   outcome            $/proc
-<span class="g">Website.SearchForCustomers        3/3         cleared            2.10</span>
-<span class="g">Integration.GetCustomerUpdates    3/3         cleared            1.98</span>
-<span class="k">Integration.GetOrderUpdates       2/3         flaky              2.34</span>
-<span class="k">Integration.GetStockItemUpdates   0/3         failed:differential 2.31</span>
+        <p class="sec-eyebrow">Reading the output — the first live sample, k=1 of k=3</p>
+        <h3 class="sec-title">What it reported</h3>
+        <div class="card check"><h4><span class="pill">CHECK</span> The first live sample <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink-3)">(real — <code>run-001.sample-01.json</code>, k=1 of k=3)</span></h4>
+<pre><span class="c"># Table 1 — headline: cleared_within_cap + cost, k=1 so far</span>
+proc                                cleared   outcome   retries   $/proc
+<span class="g">Website.SearchForCustomers          1/1       cleared   0         3.68</span>
+<span class="g">Integration.GetStockHoldingUpdates  1/1       cleared   0         2.84</span>
+<span class="g">Integration.GetTransactionUpdates   1/1       cleared   0         4.39</span>
 
-<span class="c"># Table 2 — failure taxonomy (zero failures = a finding, not a win)</span>
-failed:differential 1   ·   flaky 1   ·   failed:retry_cap 0</pre></div>
-        <p class="muted">Read the columns: each proc is run <code>k=3</code> times, and <code>cleared/3</code> reports how many of those runs passed. That's a <em>distribution</em>, not a single number — a proc that clears 2 of 3 is <code>flaky</code>, and a point estimate would have hidden that. The numbers shown are placeholders illustrating the table's shape; the real ones land when <code>evals/harness.py</code> runs.</p>
+<span class="c"># Table 2 — failure taxonomy (a clean sweep is a finding, not a win — H3)</span>
+cleared 3   ·   failed:differential 0   ·   flaky 0   ·   failed:retry_cap 0</pre></div>
+        <p class="muted">These are real numbers from one live sample, not placeholders — each service's canonical output is SHA-256 identical to the golden frozen before any model ran. But k=1 is a point, not the pre-registered <code>k=3</code> <em>distribution</em>: two more samples are pending, and only across three runs can a proc reveal itself as <code>flaky</code> (clears some runs, not others). And a 3/3 sweep is not a headline — under H3 it is the trigger for an investigation, written up in <code>evals/results/summary.md</code>.</p>
       </section>
 
       <section class="sec">
@@ -917,9 +916,11 @@ failed:differential 1   ·   flaky 1   ·   failed:retry_cap 0</pre></div>
       </section>
 
       <section class="sec">
-        <p class="sec-eyebrow">Projected — the one paid step</p>
-        <h3 class="sec-title">A worked estimate, not a measurement</h3>
-        <p>This table is an <em>estimate</em> for <code>evals/harness.py</code> (not yet run), priced at Claude Opus 5's $5&thinsp;/&thinsp;$25 per 1M tokens. It is kept visually separate from the measured block above on purpose.</p>
+        <p class="sec-eyebrow">Projected vs. first measurement</p>
+        <h3 class="sec-title">A worked estimate — and where the first real sample landed</h3>
+        <p>This table is an <em>estimate</em> for <code>evals/harness.py</code>, priced at Claude Opus 5's $5&thinsp;/&thinsp;$25 per 1M tokens. It is kept visually separate from the measured block above on purpose — and the first live sample has now put a real number next to it, which is the honest thing to show.</p>
+        <div class="warn"><strong>The estimate was ~5× low, and it's worth saying why.</strong> It priced a single <em>attempt</em> at 60k input + 16k output = <strong>$0.70</strong>. The first live sample measured a mean of <strong>$3.64 per proc</strong> — and those procs cleared on attempt <em>one</em>, with zero retries, so that is one attempt, not three. The output-token guess held (10k–17k, vs. 16k estimated); the input guess did not. An agentic attempt is not one call — it is 24–44 turns, and each turn re-bills the whole growing context, so cumulative input dwarfs a flat 60k. The projection below is left as written (it was committed before the run); the measured figure is the correction, and <code>cost/cleared</code> on real data is what the next slide's economics should ultimately rest on once <code>k=3</code> completes.</div>
+        <p class="muted">The estimate, unchanged for the audit trail:</p>
         <table class="econ-t">
           <tr><th>Line</th><th>Tokens</th><th>Rate /1M</th><th>Cost</th></tr>
           <tr><td>Input, one attempt</td><td class="n">60,000</td><td class="n">$5</td><td class="n">$0.30</td></tr>
@@ -933,7 +934,7 @@ failed:differential 1   ·   flaky 1   ·   failed:retry_cap 0</pre></div>
       <section class="sec">
         <p class="sec-eyebrow">What this proves</p>
         <h3 class="sec-title">Why "cost per cleared" is the honest unit</h3>
-        <div class="warn">The green block is <em>measured</em> — real local runs, reproduced at $0. The table is a projection: the token-per-attempt figure is the one assumption (the harness will replace it with a measured value), but the pricing, the <code>k=3</code>, and the retry cap are all fixed in <code>PREREGISTRATION.md</code> <em>before</em> the run, so the estimate is falsifiable, not retrofitted. And <code>cost / cleared</code> — not cost per attempt — is the honest unit: failed and flaky procs still burn tokens, so their cost has to fold into the ones that actually succeeded. That per-cleared figure is what you multiply against a 500-proc backlog to decide whether the harness pays for itself.</div>
+        <div class="warn">The green block is <em>measured</em> — real local runs, reproduced at $0. The table is a projection, and the first live sample has already tested it: the token-per-attempt figure was the one assumption, and it came in ~5× low because an agentic attempt is many re-billed turns, not one call (mean $3.64/proc measured vs. $0.70/attempt estimated). The pricing, the <code>k=3</code>, and the retry cap were all fixed in <code>PREREGISTRATION.md</code> <em>before</em> the run, so that miss is falsifiable and reported, not retrofitted — which is the whole point of pre-registering. And <code>cost / cleared</code> — not cost per attempt — is the honest unit: failed and flaky procs still burn tokens, so their cost has to fold into the ones that actually succeeded. That per-cleared figure is what you multiply against a 500-proc backlog to decide whether the harness pays for itself.</div>
       </section>
     </section>
 
@@ -960,7 +961,7 @@ failed:differential 1   ·   flaky 1   ·   failed:retry_cap 0</pre></div>
           <tr><td class="p">5 · hooks</td><td>Every transition gated in-loop — <code>.claude/settings.json</code></td></tr>
           <tr><td class="p">6 · teeth</td><td>8/8 mutants caught across 2 procs — <code>gates/mutation-check.sh</code> (ADR-0006)</td></tr>
           <tr><td class="p">7 · retry</td><td>Failures fed back, cap 2 — <code>pipeline/retry.md</code></td></tr>
-          <tr><td class="p">8 · measure</td><td>Real headless runs, cost + failures — <code>evals/</code> (Phase 4)</td></tr>
+          <tr><td class="p">8 · measure</td><td>Real headless runs, cost + failures — <code>evals/</code> (first live sample in, k=1 of k=3)</td></tr>
         </table>
       </section>
 
@@ -1522,34 +1523,33 @@ exit=<b>2</b>
         <p class="sec-eyebrow">Чому це важливо</p>
         <h3 class="sec-title">Безкоштовний аудит і платний вимір — різні речі</h3>
         <p>Кожен крок дотепер робив <em>нуль</em> викликів моделі — уся історія правильності аудиться безкоштовно. Цей фінальний крок — добровільний, платний: запустити Claude Code headless по корпусу й зібрати точність <em>і</em> вартість із реальних запусків. Тримати це нарізно — і є суть: машинерії правильності можна повністю довіряти, не витративши жодного токена; гроші купують лише <em>вимір того, як часто агент дістається туди самотужки</em>.</p>
-        <div class="warn"><strong>Це єдиний крок, що витрачає гроші, і його ще не запускали.</strong> Харнес (<code>evals/harness.py</code>) — це Phase 4 і досі в процесі. Його метод <em>пре-реєстровано</em> — гіпотези й пороги закомічені в git <em>до</em> того, як зʼявиться будь-яке число — тож результати не можна підігнати заднім числом. Див. <code>evals/PREREGISTRATION.md</code>.</div>
+        <div class="warn"><strong>Це єдиний крок, що витрачає гроші, і він щойно дав перший живий семпл.</strong> Харнес (<code>evals/harness.py</code>) збудований і працює: один живий семпл виміряно (<code>run-001.sample-01.json</code>, знімок <code>claude-opus-4-8</code>), а пре-реєстрований розподіл <code>k=3</code> ще в процесі (поки k=1). Його метод <em>пре-реєстровано</em> — гіпотези й пороги закомічені в git <em>до</em> того, як зʼявиться будь-яке число — тож результати не можна підігнати заднім числом. Див. <code>evals/PREREGISTRATION.md</code>.</div>
       </section>
 
       <section class="sec">
         <p class="sec-eyebrow">Спробуйте</p>
         <h3 class="sec-title">Безкоштовно відтворити; платно перезапустити</h3>
-        <div class="card do"><h4><span class="pill">DO</span> Коли харнес зʼявиться</h4>
+        <div class="card do"><h4><span class="pill">DO</span> Харнес, тепер що він працює</h4>
 <pre><span class="c"># відтворити результати із закомічених артефактів, БЕЗ викликів моделі:</span>
 bash gates/verify.sh
-<span class="c"># перезапустити агента від початку до кінця (ПЛАТНО, добровільно):</span>
-./run.sh</pre></div>
+<span class="c"># перезапустити агента від початку до кінця (ПЛАТНО, добровільно — пише наступний семпл):</span>
+bash evals/run.sh --live</pre></div>
         <p class="muted">Дві команди, дві дуже різні вартості. <code>verify.sh</code> відтворює закомічений результат за $0 — це аудит, який може запустити будь-хто. <code>run.sh</code> — це той, що викликає модель і виставляє рахунок; він добровільний саме з цієї причини.</p>
       </section>
 
       <section class="sec">
-        <p class="sec-eyebrow">Читаємо вивід — чітко позначено як ще-не-реальне</p>
-        <h3 class="sec-title">Форма того, що він звітуватиме</h3>
-        <div class="card check"><h4><span class="pill">CHECK</span> Форма того, що він звітує <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink-3)">(ілюстративно — запуску ще не було)</span></h4>
-<pre><span class="c"># Таблиця 1 — заголовок: cleared_within_cap + вартість, k=3</span>
-proc                              cleared/3   outcome            $/proc
-<span class="g">Website.SearchForCustomers        3/3         cleared            2.10</span>
-<span class="g">Integration.GetCustomerUpdates    3/3         cleared            1.98</span>
-<span class="k">Integration.GetOrderUpdates       2/3         flaky              2.34</span>
-<span class="k">Integration.GetStockItemUpdates   0/3         failed:differential 2.31</span>
+        <p class="sec-eyebrow">Читаємо вивід — перший живий семпл, k=1 із k=3</p>
+        <h3 class="sec-title">Що він відзвітував</h3>
+        <div class="card check"><h4><span class="pill">CHECK</span> Перший живий семпл <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink-3)">(реальний — <code>run-001.sample-01.json</code>, k=1 із k=3)</span></h4>
+<pre><span class="c"># Таблиця 1 — заголовок: cleared_within_cap + вартість, поки k=1</span>
+proc                                cleared   outcome   retries   $/proc
+<span class="g">Website.SearchForCustomers          1/1       cleared   0         3.68</span>
+<span class="g">Integration.GetStockHoldingUpdates  1/1       cleared   0         2.84</span>
+<span class="g">Integration.GetTransactionUpdates   1/1       cleared   0         4.39</span>
 
-<span class="c"># Таблиця 2 — таксономія провалів (нуль провалів = знахідка, а не перемога)</span>
-failed:differential 1   ·   flaky 1   ·   failed:retry_cap 0</pre></div>
-        <p class="muted">Прочитайте колонки: кожну процедуру запускають <code>k=3</code> рази, і <code>cleared/3</code> звітує, скільки з тих запусків пройшли. Це <em>розподіл</em>, а не одне число — процедура, що проходить 2 з 3, — <code>flaky</code>, і точкова оцінка сховала б це. Показані числа — заповнювачі, що ілюструють форму таблиці; реальні зʼявляться, коли запуститься <code>evals/harness.py</code>.</p>
+<span class="c"># Таблиця 2 — таксономія провалів (чиста перемога = знахідка, а не перемога — H3)</span>
+cleared 3   ·   failed:differential 0   ·   flaky 0   ·   failed:retry_cap 0</pre></div>
+        <p class="muted">Це реальні числа з одного живого семпла, не заповнювачі — канонічний вивід кожного сервісу побайтно (SHA-256) ідентичний golden, замороженому до будь-якої моделі. Але k=1 — це точка, а не пре-реєстрований <em>розподіл</em> <code>k=3</code>: два семпли ще попереду, і лише по трьох запусках процедура може виявитися <code>flaky</code> (проходить одні запуски, не інші). А 3/3 — не заголовок: за H3 це тригер розслідування, розписаного в <code>evals/results/summary.md</code>.</p>
       </section>
 
       <section class="sec">
@@ -1585,9 +1585,11 @@ failed:differential 1   ·   flaky 1   ·   failed:retry_cap 0</pre></div>
       </section>
 
       <section class="sec">
-        <p class="sec-eyebrow">Прогноз — єдиний платний крок</p>
-        <h3 class="sec-title">Пророблена оцінка, а не вимір</h3>
-        <p>Ця таблиця — <em>оцінка</em> для <code>evals/harness.py</code> (ще не запущено), за цінами Claude Opus 5 $5&thinsp;/&thinsp;$25 за 1M токенів. Її навмисно тримають візуально окремо від виміряного блоку вище.</p>
+        <p class="sec-eyebrow">Прогноз проти першого виміру</p>
+        <h3 class="sec-title">Пророблена оцінка — і де впав перший реальний семпл</h3>
+        <p>Ця таблиця — <em>оцінка</em> для <code>evals/harness.py</code>, за цінами Claude Opus 5 $5&thinsp;/&thinsp;$25 за 1M токенів. Її навмисно тримають візуально окремо від виміряного блоку вище — і перший живий семпл щойно поставив поруч реальне число, що й чесно показати.</p>
+        <div class="warn"><strong>Оцінка була занижена ~в 5 разів, і варто сказати чому.</strong> Вона оцінювала одну <em>спробу</em> в 60k вхід + 16k вихід = <strong>$0.70</strong>. Перший живий семпл виміряв середнє <strong>$3.64 на процедуру</strong> — і ті процедури пройшли з <em>першої</em> спроби, з нуль повторів, тож це одна спроба, а не три. Оцінка вихідних токенів справдилася (10k–17k проти 16k); оцінка входу — ні. Агентна спроба — не один виклик, це 24–44 ходи, і кожен хід повторно білить увесь зростаючий контекст, тож сукупний вхід затьмарює пласкі 60k. Прогноз нижче лишено як є (він закомічений до запуску); виміряне число — це поправка, і саме <code>вартість/cleared</code> на реальних даних має зрештою стати основою економіки наступного слайда, коли <code>k=3</code> завершиться.</div>
+        <p class="muted">Оцінка, незмінна заради сліду аудиту:</p>
         <table class="econ-t">
           <tr><th>Рядок</th><th>Токени</th><th>Ставка /1M</th><th>Вартість</th></tr>
           <tr><td>Вхід, одна спроба</td><td class="n">60,000</td><td class="n">$5</td><td class="n">$0.30</td></tr>
@@ -1601,7 +1603,7 @@ failed:differential 1   ·   flaky 1   ·   failed:retry_cap 0</pre></div>
       <section class="sec">
         <p class="sec-eyebrow">Що це доводить</p>
         <h3 class="sec-title">Чому «вартість за зараховану» — чесна одиниця</h3>
-        <div class="warn">Зелений блок — <em>виміряний</em>: реальні локальні запуски, відтворені за $0. Таблиця — прогноз: цифра токенів-на-спробу є єдиним припущенням (харнес замінить її виміряним значенням), але ціни, <code>k=3</code> і ліміт повторів усі зафіксовані в <code>PREREGISTRATION.md</code> <em>до</em> запуску, тож оцінка фальсифікована, а не підігнана. І <code>вартість / cleared</code> — а не на спробу — це чесна одиниця: провальні й нестабільні процедури теж витрачають токени, тож їхня вартість має скластися в ті, що справді вдалися. Саме це число за зараховану множать на беклог із 500 процедур, щоб вирішити, чи харнес окупається.</div>
+        <div class="warn">Зелений блок — <em>виміряний</em>: реальні локальні запуски, відтворені за $0. Таблиця — прогноз, і перший живий семпл уже його перевірив: цифра токенів-на-спробу була єдиним припущенням, і вона вийшла занижена ~в 5 разів, бо агентна спроба — це багато повторно білених ходів, а не один виклик (виміряно $3.64/проц. проти оцінених $0.70/спробу). Ціни, <code>k=3</code> і ліміт повторів усі зафіксовані в <code>PREREGISTRATION.md</code> <em>до</em> запуску, тож цей промах фальсифікований і відзвітований, а не підігнаний — у чому й уся суть пре-реєстрації. І <code>вартість / cleared</code> — а не на спробу — це чесна одиниця: провальні й нестабільні процедури теж витрачають токени, тож їхня вартість має скластися в ті, що справді вдалися. Саме це число за зараховану множать на беклог із 500 процедур, щоб вирішити, чи харнес окупається.</div>
       </section>
     </section>
 
@@ -1628,7 +1630,7 @@ failed:differential 1   ·   flaky 1   ·   failed:retry_cap 0</pre></div>
           <tr><td class="p">5 · хуки</td><td>Кожен перехід перевіряється в циклі — <code>.claude/settings.json</code></td></tr>
           <tr><td class="p">6 · зуби</td><td>8/8 мутантів спіймано на 2 процедурах — <code>gates/mutation-check.sh</code> (ADR-0006)</td></tr>
           <tr><td class="p">7 · повтори</td><td>Провали повертаються, ліміт 2 — <code>pipeline/retry.md</code></td></tr>
-          <tr><td class="p">8 · вимір</td><td>Реальні headless-запуски, вартість + провали — <code>evals/</code> (Phase 4)</td></tr>
+          <tr><td class="p">8 · вимір</td><td>Реальні headless-запуски, вартість + провали — <code>evals/</code> (перший живий семпл є, k=1 із k=3)</td></tr>
         </table>
       </section>
 

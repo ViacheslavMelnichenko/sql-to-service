@@ -17,6 +17,15 @@ namespace SqlToService.Generated.Tests;
 // Requires the Mongo container on :37017 (docker-compose). Each test seeds a fresh,
 // isolated database with the flat documents to_mongo.py would emit for the three
 // tables this proc reads, so the tests are deterministic and self-contained.
+//
+// Seed shape (mechanical, mirrors to_mongo.py — NOT hand-shaped to the answer):
+//   * Two golden customers exactly as relational.json -> to_mongo.py produce them:
+//     customer 1 (Tailspin Toys, city Seattle, contact 3 Cara) and customer 2
+//     (Wingtip Toys, city Portland, PrimaryContactPersonID NULL -> LEFT-join miss).
+//   * One EXTRA customer 3 "Ghostville Emporium" whose DeliveryCityID (999) matches
+//     no city row. Its name shares no substring with any golden SearchText, so the
+//     five golden cases are untouched; it exists only to prove the INNER city join
+//     drops a city-less customer even when it would otherwise match (search "Ghost").
 public sealed class SearchForCustomersTests : IDisposable
 {
     private readonly string _dbName = "wwi_test_searchforcustomers";
@@ -35,7 +44,7 @@ public sealed class SearchForCustomersTests : IDisposable
 
     public void Dispose() => _client.DropDatabase(_dbName);
 
-    // The flat seed, exactly as to_mongo.py would produce it from relational.sql:
+    // The flat seed, exactly as to_mongo.py would produce it from relational.json:
     // CustomerID/CityID/PersonID become _id; NULL contact stays null.
     private void Seed()
     {
@@ -67,12 +76,27 @@ public sealed class SearchForCustomersTests : IDisposable
                 { "DeliveryCityID", 2 }, { "PhoneNumber", "555-0200" },
                 { "FaxNumber", "555-0201" }, { "PrimaryContactPersonID", BsonNull.Value },
             },
+            // City-less customer: DeliveryCityID 999 matches no city row. The INNER
+            // join must drop it entirely (search "Ghost" -> []). Name is disjoint
+            // from every golden SearchText so no golden case is perturbed.
+            new BsonDocument
+            {
+                { "_id", 3 }, { "CustomerName", "Ghostville Emporium" },
+                { "DeliveryCityID", 999 }, { "PhoneNumber", "555-0900" },
+                { "FaxNumber", "555-0901" }, { "PrimaryContactPersonID", BsonNull.Value },
+            },
         });
     }
 
     private static BsonDocument Person(int id, string full, string preferred) =>
         new() { { "_id", id }, { "FullName", full }, { "PreferredName", preferred } };
 
+    // ---- Golden-match cases: one per case in corpus/cases, covering each branch ----
+    // toys-both       : both customers, ordered Tailspin then Wingtip; c2 -> p:[{}]
+    // contact-name-match : "Cara" matches only via the LEFT-joined contact's name
+    // null-contact-name-match : "Wingtip" matches c2 (NULL contact) on its own name
+    // no-match-empty  : "zzz" -> []
+    // top-1-pagination: "Toys" TOP(1) -> Tailspin only (order before limit)
     [Theory]
     [InlineData("toys-both", "Toys", 100)]
     [InlineData("contact-name-match", "Cara", 100)]
@@ -84,14 +108,10 @@ public sealed class SearchForCustomersTests : IDisposable
         var service = new SearchForCustomersService(_db);
         var actual = service.Execute(searchText, maxRows);
 
-        var actualJson = JsonSerializer.Serialize(actual);
+        var actualCanon = Canonicalise(JsonSerializer.Serialize(actual));
         var goldenPath = Path.Combine(_repoRoot, "corpus", "golden",
             $"Website.SearchForCustomers__{caseName}.json");
-        var goldenJson = File.ReadAllText(goldenPath);
-
-        // Canonicalise BOTH sides with the gate's own definition of "same output".
-        var actualCanon = Canonicalise(actualJson);
-        var goldenCanon = Canonicalise(goldenJson);
+        var goldenCanon = Canonicalise(File.ReadAllText(goldenPath));
 
         Assert.Equal(goldenCanon, actualCanon);
     }
@@ -103,14 +123,101 @@ public sealed class SearchForCustomersTests : IDisposable
         // an omitted key, not [], not nulls. Pin it directly, before canonicalising.
         var service = new SearchForCustomersService(_db);
         var actual = service.Execute("Wingtip", 100);
-        var json = JsonSerializer.Serialize(actual);
-        using var doc = JsonDocument.Parse(json);
+        using var doc = JsonDocument.Parse(JsonSerializer.Serialize(actual));
 
         var customer = doc.RootElement[0];
         var p = customer.GetProperty("ct")[0].GetProperty("p");
         Assert.Equal(JsonValueKind.Array, p.ValueKind);
         Assert.Equal(1, p.GetArrayLength());
-        Assert.Equal(0, p[0].EnumerateObject().Count()); // exactly {} — no keys
+        Assert.Empty(p[0].EnumerateObject()); // exactly {} — no keys
+    }
+
+    [Fact]
+    public void Contact_Present_Nests_Under_Ct_As_One_Element_Array()
+    {
+        // Nesting depth: p sits INSIDE ct[0] (join order cities-then-people), not at
+        // the top level; both ct and p are one-element arrays.
+        var service = new SearchForCustomersService(_db);
+        var actual = service.Execute("Cara", 100);
+        using var doc = JsonDocument.Parse(JsonSerializer.Serialize(actual));
+
+        var customer = doc.RootElement[0];
+        Assert.False(customer.TryGetProperty("p", out _)); // p is NOT top-level
+        var ct = customer.GetProperty("ct");
+        Assert.Equal(JsonValueKind.Array, ct.ValueKind);
+        Assert.Equal(1, ct.GetArrayLength());
+        Assert.Equal("Seattle", ct[0].GetProperty("CityName").GetString());
+
+        var p = ct[0].GetProperty("p");
+        Assert.Equal(JsonValueKind.Array, p.ValueKind);
+        Assert.Equal(1, p.GetArrayLength());
+        Assert.Equal("Cara Customer", p[0].GetProperty("PrimaryContactFullName").GetString());
+        Assert.Equal("Cara", p[0].GetProperty("PrimaryContactPreferredName").GetString());
+    }
+
+    [Fact]
+    public void Top_Level_Key_Order_Is_Id_Name_Fax_Phone_Then_Ct()
+    {
+        // Golden top-level key order is CustomerID, CustomerName, FaxNumber,
+        // PhoneNumber (Fax BEFORE Phone — NOT SELECT-list order), then the ct nest.
+        var service = new SearchForCustomersService(_db);
+        var actual = service.Execute("Tailspin", 100);
+        using var doc = JsonDocument.Parse(JsonSerializer.Serialize(actual));
+
+        var keys = doc.RootElement[0].EnumerateObject().Select(p => p.Name).ToArray();
+        Assert.Equal(
+            new[] { "CustomerID", "CustomerName", "FaxNumber", "PhoneNumber", "ct" },
+            keys);
+    }
+
+    [Theory]
+    [InlineData("cara")]
+    [InlineData("CARA")]
+    [InlineData("Cara")]
+    public void Match_Is_Case_Insensitive(string searchText)
+    {
+        // WWI collation is CI_AS: LIKE is case-insensitive. All three spellings of
+        // "cara" must return customer 1 only, via the contact-name haystack.
+        var service = new SearchForCustomersService(_db);
+        var actual = service.Execute(searchText, 100);
+        using var doc = JsonDocument.Parse(JsonSerializer.Serialize(actual));
+
+        Assert.Single(doc.RootElement.EnumerateArray());
+        Assert.Equal(1, doc.RootElement[0].GetProperty("CustomerID").GetInt32());
+    }
+
+    [Fact]
+    public void City_Less_Customer_Is_Dropped_By_Inner_Join()
+    {
+        // INNER JOIN Cities: customer 3 (DeliveryCityID 999, no such city) WOULD
+        // match "Ghost" by name, but must be dropped entirely. Not softened to LEFT.
+        var service = new SearchForCustomersService(_db);
+        var actual = service.Execute("Ghost", 100);
+        using var doc = JsonDocument.Parse(JsonSerializer.Serialize(actual));
+
+        Assert.Empty(doc.RootElement.EnumerateArray());
+    }
+
+    [Fact]
+    public void No_Float_Anywhere_Ids_Are_Integer_Tokens()
+    {
+        // Precision contract: this proc surfaces no decimal/money column, so the only
+        // numbers are integer IDs. Pin that CustomerID serialises as an integer token
+        // (no decimal point / exponent) so a float regression fails loudly.
+        var service = new SearchForCustomersService(_db);
+        var actual = service.Execute("Toys", 100);
+        var json = JsonSerializer.Serialize(actual);
+        using var doc = JsonDocument.Parse(json);
+
+        foreach (var customer in doc.RootElement.EnumerateArray())
+        {
+            var id = customer.GetProperty("CustomerID");
+            Assert.Equal(JsonValueKind.Number, id.ValueKind);
+            Assert.True(id.TryGetInt32(out _));
+            Assert.DoesNotContain('.', id.GetRawText());
+            Assert.DoesNotContain('e', id.GetRawText());
+            Assert.DoesNotContain('E', id.GetRawText());
+        }
     }
 
     // Shell out to corpus/canonicalise.py --ordered: the tests use the gate's real

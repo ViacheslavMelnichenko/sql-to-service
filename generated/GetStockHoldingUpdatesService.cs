@@ -1,3 +1,4 @@
+using System.Globalization;
 using MongoDB.Bson;
 using MongoDB.Driver;
 
@@ -53,9 +54,12 @@ public sealed class GetStockHoldingUpdatesService
                 ["Last Stocktake Quantity"] = AsInt(h, "LastStocktakeQuantity"),
                 // decimal(18,2), stored as Decimal128 by to_mongo.py. Read it AS a
                 // .NET decimal — never a double — so the fixed-scale digits survive
-                // to the comparison. Emitting via double is the precision mutant the
-                // mutation check injects (corpus/mutations/*.json).
-                ["Last Cost Price"] = AsDecimal(h, "LastCostPrice"),
+                // to the comparison. Emit as a fixed-scale-4 InvariantCulture STRING
+                // ("12.5000"), matching the golden and canonicalise.py: a raw decimal
+                // would serialise as an unquoted number (12.5) and drop the scale.
+                // Emitting via double is the precision mutant the mutation check
+                // injects (corpus/mutations/*.json).
+                ["Last Cost Price"] = AsDecimalString(h, "LastCostPrice"),
                 ["Reorder Level"] = AsInt(h, "ReorderLevel"),
                 ["Target Stock Level"] = AsInt(h, "TargetStockLevel"),
                 ["WWI Stock Item ID"] = StockItemId(h),
@@ -68,12 +72,18 @@ public sealed class GetStockHoldingUpdatesService
 
     private static int AsInt(BsonDocument doc, string field) => doc[field].ToInt32();
 
-    // Decimal128 -> .NET decimal, preserving scale. Not via double: a double cannot
-    // represent every decimal exactly, and that lossy conversion is exactly the bug
-    // the differential exists to catch (the precision mutant swaps this line for a
-    // double round-trip; mutation-check.sh anchors on it).
-    private static decimal AsDecimal(BsonDocument doc, string field) =>
-        Decimal128.ToDecimal(doc[field].AsDecimal128);
+    // Decimal128 -> .NET decimal -> fixed-scale-4 InvariantCulture string.
+    // Never via double: a double cannot represent every decimal exactly, and that
+    // lossy conversion is exactly the bug the differential exists to catch (the
+    // precision mutant swaps this for a double round-trip; mutation-check.sh anchors
+    // on it). The golden carries "12.5000" (quoted, scale 4), so we emit the string
+    // form here — a bare decimal would serialise as an unquoted number and lose the
+    // trailing zeros. "F4"/InvariantCulture matches canonicalise.py's scale-4 rule.
+    private static string AsDecimalString(BsonDocument doc, string field)
+    {
+        var value = Decimal128.ToDecimal(doc[field].AsDecimal128);
+        return value.ToString("F4", CultureInfo.InvariantCulture);
+    }
 
     private static string? AsString(BsonDocument doc, string field)
     {

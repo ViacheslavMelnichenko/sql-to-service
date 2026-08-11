@@ -28,6 +28,7 @@
   <ItemGroup>
     <Compile Include="..\SearchForCustomersService.cs" />
     <Compile Include="..\GetStockHoldingUpdatesService.cs" />
+    <Compile Include="..\GetTransactionUpdatesService.cs" />
   </ItemGroup>
 
 </Project>

@@ -10,13 +10,17 @@ There are two things you might run, and they are not the same:
 | | Command | Model? | Cost | Writes |
 |---|---|---|---|---|
 | **Dry run** (scaffold check) | `bash evals/run.sh` | no | $0 | `evals/results/dry-run.json` (gitignored) |
-| **Live run** (the real result) | `bash evals/run.sh --live` | yes | real API budget | `evals/results/run-001.json` |
+| **Live sample** (one of k=3) | `bash evals/run.sh --live` | yes | real API budget | next `evals/results/run-001.sample-0N.json` |
+| **Aggregate** (build the result) | `py evals/aggregate.py --expect-k 3` | no | $0 | `evals/results/run-001.json` |
 
 The dry run measures the **already-committed** services with no model in the loop
-— it proves the plumbing (gates, SHA-256 identity, JSON emission) for free. The
-live run drives the real agent, headless, through the four-stage pipeline. Only
-the live run produces a citable result; a dry run must **never** be renamed to
-`run-001` (`harness.py` marks its mode so it can't be mistaken).
+— it proves the plumbing (gates, SHA-256 identity, JSON emission) for free. Each
+live run drives the real agent, headless, through the four-stage pipeline and
+produces **one independent sample**; the pre-registration fixes **k=3**, so a full
+result is three live samples plus one aggregation. Only the aggregated
+`run-001.json` (built from live samples) is citable; a dry run must **never** be
+renamed to a sample (`harness.py` marks its mode so it can't be mistaken, and
+`aggregate.py` refuses any non-`live` sample).
 
 ---
 
@@ -74,7 +78,11 @@ Run this before every commit that touches `generated/`, `gates/`, `corpus/`, or
 
 ---
 
-## The live run (paid, produces `run-001.json`)
+## The live run (paid, produces one sample toward `run-001.json`)
+
+Each command below produces **one sample**. Run it three times (k=3), then
+aggregate. Every run writes to the next free `run-001.sample-0N.json`, so a re-run
+never clobbers an earlier sample.
 
 ### On macOS / Linux
 
@@ -83,9 +91,10 @@ bash evals/run.sh --live          # prompts: type "run-live" to confirm
 bash evals/run.sh --live --yes    # non-interactive (a real key in the environment)
 ```
 
-The wrapper refuses to start live unless you confirm, then sets `EVAL_LIVE_OK=1`
-and hands off to `harness.py --run-id run-001`. A live run always exits 0 — an
-honest failure is a valid result, not a harness error.
+The wrapper refuses to start live unless you confirm, then sets `EVAL_LIVE_OK=1`,
+picks the next sample number, and hands off to `harness.py --run-id
+run-001.sample-0N`. A live run always exits 0 — an honest failure is a valid
+result, not a harness error.
 
 ### On Windows
 
@@ -94,24 +103,41 @@ yourself** — not from inside a Claude Code session, and not through the Bash t
 
 ```powershell
 cd C:\projects\sql-to-service
-powershell -ExecutionPolicy Bypass -File evals\run-live.ps1
+powershell -ExecutionPolicy Bypass -File evals\run-live.ps1            # next sample
+powershell -ExecutionPolicy Bypass -File evals\run-live.ps1 -Sample 2  # force sample 2
 ```
 
 `run-live.ps1` does the whole sequence: checks the Foundry key is visible, probes
 auth cheaply before spending anything, brings the engines up, waits on the ports,
-ensures `pymongo`, then runs the live harness. Expect **tens of minutes per proc**
-and a real bill.
+ensures `pymongo`, then runs the live harness for one sample. Expect **tens of
+minutes per proc** and a real bill.
 
 Why "a window you opened yourself" is load-bearing: see **Authentication** below.
 
-### What a good result looks like
+### Aggregating the samples into `run-001.json`
+
+Once three live samples exist, build the distribution (no model, $0):
+
+```sh
+py evals/aggregate.py --expect-k 3      # or: python3 evals/aggregate.py --expect-k 3
+```
+
+`aggregate.py` reads every `run-001.sample-*.json`, checks they agree on model and
+temperature, and writes `run-001.json` with, per proc, `cleared/k`, whether it is
+`flaky` (differs across the k runs), and the cost/token spread. It **audits
+independence**: a sample proc that recorded 0 agent turns did not really
+regenerate, and is flagged `independent: false` so a stale artifact can't pad the
+distribution. Running it with fewer than three samples writes an honest *partial*
+distribution and warns; `--expect-k 3` makes fewer than three a hard error.
+
+### What a good sample looks like
 
 Each proc records `outcome: "cleared"`, a non-zero `num_turns`/`cost_usd`, a
 `model_snapshot` (e.g. `claude-opus-4-8`), and an `identity.match: true` with the
-two SHA-256 hashes equal. `cleared_within_cap` at the top is the count that
-cleared. A proc landing in `failed:differential` or `flaky` is an **expected,
-honest** outcome (PREREGISTRATION.md, H3) — a clean sweep is a finding to
-investigate, not a success.
+two SHA-256 hashes equal. A proc landing in `failed:differential` or `flaky` across
+the k samples is an **expected, honest** outcome (PREREGISTRATION.md, H3) — a clean
+sweep across all three is a finding to investigate, not a success, and
+`summary.md` is where that investigation is written down.
 
 ---
 
@@ -186,11 +212,13 @@ the harness, but worth recognising if the environment shifts):
 
 ---
 
-## Reproducing k=3 and the baseline
+## k=3 and the baseline
 
-- **k=3 (`run-002`, distribution):** run the live harness three times with distinct
-  `--run-id`s (`run-001`, `run-002`, `run-003`) and report the distribution, flagging
-  any proc whose outcome differs across runs as `flaky` (PREREGISTRATION.md, H3).
+- **k=3 (the distribution):** run the live harness three times (each writes the next
+  `run-001.sample-0N.json`), then `py evals/aggregate.py --expect-k 3` builds
+  `run-001.json` and flags any proc whose outcome differs across the samples as
+  `flaky` (PREREGISTRATION.md, H3). The samples are committed alongside the
+  aggregate, so `run-001.json` is recomputable from its inputs.
 - **Baseline (`baseline.json`, B.4):** the naive single-prompt control — same procs,
   same gate, no staged subagents — is what `run-001` must beat (H2).
 

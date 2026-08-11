@@ -8,13 +8,27 @@
 #   cd C:\projects\sql-to-service
 #   powershell -ExecutionPolicy Bypass -File evals\run-live.ps1
 #
+# k=3 (PREREGISTRATION.md). Each invocation produces ONE independent sample -> a
+# separate evals\results\run-001.sample-0N.json (N auto-detected as the next free
+# number, so a re-run never clobbers an earlier sample). After the 3rd sample,
+# aggregate them into the distribution run-001.json:
+#
+#   powershell -ExecutionPolicy Bypass -File evals\run-live.ps1     # sample 2, then 3
+#   py evals\aggregate.py --expect-k 3                              # -> run-001.json
+#
+# Force a specific sample number with -Sample N (e.g. to redo a bad sample).
+#
 # It: (1) checks the Foundry key is visible, (2) probes headless auth before
 # spending any budget, (3) brings the two engines up, (4) waits for health,
-# (5) ensures pymongo, (6) runs the LIVE harness -> evals\results\run-001.json.
+# (5) ensures pymongo, (6) runs the LIVE harness -> the next sample file.
 #
 # ASCII ONLY. Windows PowerShell 5.1 reads a no-BOM script as the ANSI codepage,
 # so any em-dash or smart-quote becomes garbage bytes that break the parser in
 # unrelated places. Keep every character in this file plain ASCII.
+
+param(
+    [int]$Sample = 0   # 0 = auto-detect the next free sample number
+)
 
 $ErrorActionPreference = "Stop"
 $model = if ($env:EVAL_MODEL) { $env:EVAL_MODEL } else { "claude-opus-4-8-gateway" }
@@ -85,17 +99,32 @@ Write-Host "[run] ensuring pymongo ..." -ForegroundColor Cyan
 & py -m pip install --quiet pymongo 2>&1 | Out-Host
 
 # --- 6. LIVE harness ---------------------------------------------------------
-Write-Host "[run] LIVE RUN starting. Real API budget; drives the agent through the gate." -ForegroundColor Yellow
-Write-Host "      This can take tens of minutes. Writes evals\results\run-001.json." -ForegroundColor Yellow
+# Pick the sample number: explicit -Sample wins; otherwise the next free NN.
+if ($Sample -lt 1) {
+    $existing = Get-ChildItem "evals\results" -Filter "run-001.sample-*.json" -ErrorAction SilentlyContinue |
+        ForEach-Object { if ($_.Name -match 'sample-(\d+)\.json$') { [int]$Matches[1] } }
+    $Sample = if ($existing) { ([int]($existing | Measure-Object -Maximum).Maximum) + 1 } else { 1 }
+}
+$sampleId = "run-001.sample-{0:D2}" -f $Sample
+$sampleFile = "evals\results\$sampleId.json"
+
+Write-Host "[run] LIVE RUN starting (sample $Sample of k=3). Real API budget; drives the agent through the gate." -ForegroundColor Yellow
+Write-Host "      This can take tens of minutes. Writes $sampleFile." -ForegroundColor Yellow
 $env:EVAL_LIVE_OK = "1"
-& py evals/harness.py --run-id run-001
+& py evals/harness.py --run-id $sampleId
 $code = $LASTEXITCODE
 
 Write-Host ""
-if (Test-Path "evals\results\run-001.json") {
-    Write-Host "[run] DONE. Result written to evals\results\run-001.json" -ForegroundColor Green
-    Write-Host "      Paste that file to Claude (or say done) to finish B.3." -ForegroundColor Green
+if (Test-Path $sampleFile) {
+    Write-Host "[run] DONE. Sample written to $sampleFile" -ForegroundColor Green
+    $n = (Get-ChildItem "evals\results" -Filter "run-001.sample-*.json").Count
+    if ($n -ge 3) {
+        Write-Host "[run] $n samples present. Aggregate now:  py evals\aggregate.py --expect-k 3" -ForegroundColor Green
+    } else {
+        Write-Host "[run] $n of 3 samples done. Re-run this script for the next one." -ForegroundColor Cyan
+    }
+    Write-Host "      Then paste run-001.json to Claude (or say done) to finish B.3." -ForegroundColor Green
 } else {
-    Write-Host "[run] harness exited ($code) but no run-001.json was written - check the output above." -ForegroundColor Red
+    Write-Host "[run] harness exited ($code) but no $sampleFile was written - check the output above." -ForegroundColor Red
 }
 exit $code

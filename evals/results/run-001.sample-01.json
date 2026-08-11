@@ -1,0 +1,77 @@
+{
+  "run_id": "run-001",
+  "mode": "live",
+  "preregistration": "evals/PREREGISTRATION.md",
+  "model": "claude-opus-4-8-gateway",
+  "temperature": 0.0,
+  "retry_cap": 2,
+  "gate_bash": "C:\\Program Files\\Git\\bin\\bash.exe",
+  "n_procs": 3,
+  "cleared_within_cap": 3,
+  "results": [
+    {
+      "proc": "Website.SearchForCustomers",
+      "outcome": "cleared",
+      "retries": 0,
+      "attempts": 1,
+      "cleared_within_cap": true,
+      "identity": {
+        "produced_output_sha256": "d9d84aec9bad81c6f2fe444daa08ed619e1f321ca059094ae50287c1eac379d3",
+        "golden_output_sha256": "d9d84aec9bad81c6f2fe444daa08ed619e1f321ca059094ae50287c1eac379d3",
+        "match": true
+      },
+      "source_sha256": "1dcccb51a96a9fd8aac46c1d8216f0a66a177bc474ef24099abb184e1f435c5b",
+      "model_snapshot": "claude-opus-4-8",
+      "tokens": {
+        "input": 3034,
+        "output": 10585
+      },
+      "cost_usd": 3.676815,
+      "num_turns": 30,
+      "wall_seconds": 1161.5
+    },
+    {
+      "proc": "Integration.GetStockHoldingUpdates",
+      "outcome": "cleared",
+      "retries": 0,
+      "attempts": 1,
+      "cleared_within_cap": true,
+      "identity": {
+        "produced_output_sha256": "b5ae66c6a7153e56bfce315e92f9003410a3979eb7b42525ce64b00a1f887795",
+        "golden_output_sha256": "b5ae66c6a7153e56bfce315e92f9003410a3979eb7b42525ce64b00a1f887795",
+        "match": true
+      },
+      "source_sha256": "528ba3e2a89781f7dd15a88df6bd5562972bb1a5957dd4514ab82d5be91a103c",
+      "model_snapshot": "claude-opus-4-8",
+      "tokens": {
+        "input": 26,
+        "output": 13118
+      },
+      "cost_usd": 2.841046,
+      "num_turns": 24,
+      "wall_seconds": 801.9
+    },
+    {
+      "proc": "Integration.GetTransactionUpdates",
+      "outcome": "cleared",
+      "retries": 0,
+      "attempts": 1,
+      "cleared_within_cap": true,
+      "identity": {
+        "produced_output_sha256": "6f808ffa685d69641bbc6da3507c77303b4b73834167fd9f43555ce1d4b7b136",
+        "golden_output_sha256": "6f808ffa685d69641bbc6da3507c77303b4b73834167fd9f43555ce1d4b7b136",
+        "match": true
+      },
+      "source_sha256": "cc2615ece5bdac79d0ec83c285cc94f5f3793621e5a81c42d06e996bce73f6c7",
+      "model_snapshot": "claude-opus-4-8",
+      "tokens": {
+        "input": 79,
+        "output": 16983
+      },
+      "cost_usd": 4.388812,
+      "num_turns": 44,
+      "wall_seconds": 1051.3
+    }
+  ],
+  "note": "Live run: model-driven conversion, real API cost. Snapshot captured from the first invocation and recorded above."
+}

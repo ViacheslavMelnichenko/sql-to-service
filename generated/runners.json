@@ -9,5 +9,10 @@
     "csproj": "generated/GetStockHoldingUpdates.csproj",
     "assembly": "GetStockHoldingUpdates",
     "service": "generated/GetStockHoldingUpdatesService.cs"
+  },
+  "Integration.GetTransactionUpdates": {
+    "csproj": "generated/GetTransactionUpdates.csproj",
+    "assembly": "GetTransactionUpdates",
+    "service": "generated/GetTransactionUpdatesService.cs"
   }
 }

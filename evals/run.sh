@@ -70,4 +70,15 @@ if [ "$ASSUME_YES" != "1" ]; then
 fi
 
 export EVAL_LIVE_OK=1
-exec "$PY" evals/harness.py --run-id run-001 "${PASSTHROUGH[@]+"${PASSTHROUGH[@]}"}"
+# k=3 (PREREGISTRATION.md): each live run is ONE independent sample, written to the
+# next free run-001.sample-0N.json so a re-run never clobbers an earlier sample.
+# After the 3rd, aggregate into the distribution:  "$PY" evals/aggregate.py --expect-k 3
+next_sample=1
+for existing in evals/results/run-001.sample-*.json; do
+  [ -e "$existing" ] || continue
+  n="${existing##*sample-}"; n="${n%.json}"; n=$((10#$n))
+  [ "$n" -ge "$next_sample" ] && next_sample=$((n + 1))
+done
+sample_id=$(printf 'run-001.sample-%02d' "$next_sample")
+echo "[run] live sample $next_sample of k=3 -> evals/results/$sample_id.json" >&2
+exec "$PY" evals/harness.py --run-id "$sample_id" "${PASSTHROUGH[@]+"${PASSTHROUGH[@]}"}"

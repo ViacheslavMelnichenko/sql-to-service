@@ -1,0 +1,130 @@
+{
+  "run_id": "run-001",
+  "mode": "live-aggregate",
+  "preregistration": "evals/PREREGISTRATION.md",
+  "k": 1,
+  "model": "claude-opus-4-8-gateway",
+  "temperature": 0.0,
+  "retry_cap": 2,
+  "model_snapshot": [
+    "claude-opus-4-8"
+  ],
+  "samples": [
+    "run-001.sample-01.json"
+  ],
+  "n_procs": 3,
+  "proc_runs": 3,
+  "cleared_proc_runs": "3/3",
+  "flaky_procs": [],
+  "non_independent_procs": [],
+  "clean_sweep": true,
+  "cost_usd_total": 10.906673,
+  "per_proc": [
+    {
+      "proc": "Website.SearchForCustomers",
+      "k": 1,
+      "cleared": 1,
+      "cleared_within_cap": "1/1",
+      "flaky": false,
+      "independent": true,
+      "outcomes": [
+        "cleared"
+      ],
+      "retries": [
+        0
+      ],
+      "identity": {
+        "produced_output_sha256": "d9d84aec9bad81c6f2fe444daa08ed619e1f321ca059094ae50287c1eac379d3",
+        "golden_output_sha256": "d9d84aec9bad81c6f2fe444daa08ed619e1f321ca059094ae50287c1eac379d3",
+        "consistent_across_cleared": true
+      },
+      "cost_usd": {
+        "per_sample": [
+          3.676815
+        ],
+        "mean": 3.676815,
+        "total": 3.676815
+      },
+      "output_tokens": [
+        10585
+      ],
+      "num_turns": [
+        30
+      ],
+      "source_sha256_per_sample": [
+        "1dcccb51a96a9fd8aac46c1d8216f0a66a177bc474ef24099abb184e1f435c5b"
+      ]
+    },
+    {
+      "proc": "Integration.GetStockHoldingUpdates",
+      "k": 1,
+      "cleared": 1,
+      "cleared_within_cap": "1/1",
+      "flaky": false,
+      "independent": true,
+      "outcomes": [
+        "cleared"
+      ],
+      "retries": [
+        0
+      ],
+      "identity": {
+        "produced_output_sha256": "b5ae66c6a7153e56bfce315e92f9003410a3979eb7b42525ce64b00a1f887795",
+        "golden_output_sha256": "b5ae66c6a7153e56bfce315e92f9003410a3979eb7b42525ce64b00a1f887795",
+        "consistent_across_cleared": true
+      },
+      "cost_usd": {
+        "per_sample": [
+          2.841046
+        ],
+        "mean": 2.841046,
+        "total": 2.841046
+      },
+      "output_tokens": [
+        13118
+      ],
+      "num_turns": [
+        24
+      ],
+      "source_sha256_per_sample": [
+        "528ba3e2a89781f7dd15a88df6bd5562972bb1a5957dd4514ab82d5be91a103c"
+      ]
+    },
+    {
+      "proc": "Integration.GetTransactionUpdates",
+      "k": 1,
+      "cleared": 1,
+      "cleared_within_cap": "1/1",
+      "flaky": false,
+      "independent": true,
+      "outcomes": [
+        "cleared"
+      ],
+      "retries": [
+        0
+      ],
+      "identity": {
+        "produced_output_sha256": "6f808ffa685d69641bbc6da3507c77303b4b73834167fd9f43555ce1d4b7b136",
+        "golden_output_sha256": "6f808ffa685d69641bbc6da3507c77303b4b73834167fd9f43555ce1d4b7b136",
+        "consistent_across_cleared": true
+      },
+      "cost_usd": {
+        "per_sample": [
+          4.388812
+        ],
+        "mean": 4.388812,
+        "total": 4.388812
+      },
+      "output_tokens": [
+        16983
+      ],
+      "num_turns": [
+        44
+      ],
+      "source_sha256_per_sample": [
+        "cc2615ece5bdac79d0ec83c285cc94f5f3793621e5a81c42d06e996bce73f6c7"
+      ]
+    }
+  ],
+  "note": "Aggregated from the committed per-sample live runs; recompute with python3 evals/aggregate.py. k<3 is a partial distribution \u2014 the pre-registration fixes k=3. A clean sweep (every proc clears every run) is a FINDING to investigate under H3, not a headline; see evals/results/summary.md."
+}
