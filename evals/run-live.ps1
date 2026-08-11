@@ -46,23 +46,28 @@ if ($probe -match '"is_error"\s*:\s*true' -or $probe -match 'authentication fail
 Write-Host "[run] auth probe ok." -ForegroundColor Green
 
 # --- 4. Engines up + healthy -------------------------------------------------------
+# Native tools (docker/pip) write progress to stderr; under -ErrorActionPreference
+# Stop that stderr is treated as a terminating error even on success. Drop to
+# Continue for this best-effort section so a healthy engine is never mistaken for a
+# failure, and swallow stderr explicitly.
 if (-not (Test-Path ".env")) {
     Write-Host "[run] no .env — copy .env.example to .env and set the SA password first." -ForegroundColor Red
     exit 1
 }
-Write-Host "[run] bringing up mssql + mongo ..." -ForegroundColor Cyan
-docker compose up -d mssql mongo | Out-Host
+$ErrorActionPreference = "Continue"
+Write-Host "[run] bringing up mssql + mongo (no-op if already running) ..." -ForegroundColor Cyan
+docker compose up -d mssql mongo 2>&1 | Out-Host
 
 $deadline = (Get-Date).AddSeconds(240)
 foreach ($svc in @("mssql", "mongo")) {
     Write-Host "[run] waiting for $svc to be healthy ..." -ForegroundColor Cyan
     while ($true) {
-        $cid = (docker compose ps -q $svc).Trim()
-        $status = if ($cid) { (docker inspect -f '{{.State.Health.Status}}' $cid 2>$null) } else { "" }
+        $cid = "$(docker compose ps -q $svc 2>$null)".Trim()
+        $status = if ($cid) { "$(docker inspect -f '{{.State.Health.Status}}' $cid 2>$null)".Trim() } else { "" }
         if ($status -eq "healthy") { Write-Host "[run] $svc healthy." -ForegroundColor Green; break }
         if ((Get-Date) -gt $deadline) {
-            Write-Host "[run] $svc never became healthy." -ForegroundColor Red
-            docker compose logs $svc | Select-Object -Last 40 | Out-Host
+            Write-Host "[run] $svc never became healthy (status='$status')." -ForegroundColor Red
+            docker compose logs $svc 2>&1 | Select-Object -Last 40 | Out-Host
             exit 1
         }
         Start-Sleep -Seconds 5
@@ -71,7 +76,7 @@ foreach ($svc in @("mssql", "mongo")) {
 
 # --- 5. pymongo (seed loader) ------------------------------------------------------
 Write-Host "[run] ensuring pymongo ..." -ForegroundColor Cyan
-& py -m pip install --quiet pymongo
+& py -m pip install --quiet pymongo 2>&1 | Out-Host
 
 # --- 6. LIVE harness ---------------------------------------------------------------
 Write-Host "[run] LIVE RUN starting. Real API budget; drives the agent through the gate." -ForegroundColor Yellow
