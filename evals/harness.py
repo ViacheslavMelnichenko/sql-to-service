@@ -60,6 +60,31 @@ CASES_DIR = ROOT / "corpus" / "cases"
 GOLDEN_DIR = ROOT / "corpus" / "golden"
 CANONICALISE = ROOT / "corpus" / "canonicalise.py"
 
+
+def _resolve_bash():
+    """The gate scripts are bash. On Windows the `bash` first on PATH is often
+    WSL (C:\\Windows\\System32\\bash.exe), NOT Git Bash — and a broken/absent WSL
+    distro makes `bash gates/build.sh` fail instantly with 'execvpe(/bin/bash)
+    failed', which the harness would record as failed:build though the service is
+    fine. Prefer Git Bash explicitly; let EVAL_BASH override; fall back to plain
+    'bash' on non-Windows where PATH bash is the right one.
+    """
+    override = os.environ.get("EVAL_BASH")
+    if override:
+        return override
+    if os.name == "nt":
+        for cand in (
+            r"C:\Program Files\Git\bin\bash.exe",
+            r"C:\Program Files\Git\usr\bin\bash.exe",
+            r"C:\Program Files (x86)\Git\bin\bash.exe",
+        ):
+            if Path(cand).exists():
+                return cand
+    return "bash"
+
+
+BASH = _resolve_bash()
+
 # --- pre-registered constants (PREREGISTRATION.md — do not tune to fit a result) ---
 RETRY_CAP = 2                       # two retries after the first attempt (3 total)
 # The model string the gateway CLI expects — the SAME value the interactive Claude
@@ -97,11 +122,12 @@ def _debug_dump(proc, attempt, kind, text):
     (dbg / f"{safe}.attempt{attempt}.{kind}.txt").write_text(text, encoding="utf-8")
 
 
-def sh(cmd, env=None, timeout=None):
+def sh(cmd, env=None, timeout=None, stdin_text=None):
     """Run a shell command from ROOT; return (rc, stdout+stderr)."""
     proc = subprocess.run(
         cmd, cwd=str(ROOT), shell=isinstance(cmd, str),
         capture_output=True, text=True, env=env, timeout=timeout,
+        input=stdin_text,
     )
     return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
 
@@ -182,13 +208,13 @@ def run_gates(proc):
     """Run build + unit + per-proc differential — the same verdict verify.sh gives,
     but decomposed so the failure taxonomy can name WHICH gate failed. Returns
     (outcome, detail). outcome is 'cleared' or 'failed:<gate>'."""
-    rc, out = sh(["bash", "gates/build.sh", proc])
+    rc, out = sh([BASH, "gates/build.sh", proc])
     if rc != 0:
         return "failed:build", out
-    rc, out = sh(["bash", "gates/unit.sh"])
+    rc, out = sh([BASH, "gates/unit.sh"])
     if rc != 0:
         return "failed:unit", out
-    rc, out = sh(["bash", "gates/differential.sh", proc])
+    rc, out = sh([BASH, "gates/differential.sh", proc])
     if rc != 0:
         return "failed:differential", out
     return "cleared", out
@@ -206,7 +232,14 @@ def convert_live(proc):
     CONVERT_PROC) blocks an early finish inside each session; THIS loop is the hard
     across-attempts cap that guarantees termination (pipeline/retry.md)."""
     prompt = build_conversion_prompt(proc)
-    env = dict(os.environ, CONVERT_PROC=proc)
+    # CONVERT_PROC makes the Stop hook proc-aware. CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=0
+    # is load-bearing: with it left at 1 (the interactive default here), the child
+    # `claude` FORCES permission-mode back to default and ignores --permission-mode
+    # acceptEdits, so the headless agent can never write a file and every attempt
+    # ends with 0 turns. Turning the scrub OFF for this child restores acceptEdits;
+    # the Foundry key is already present in this shell (we run outside a Claude Code
+    # session, per run-live.ps1), so auth is unaffected.
+    env = dict(os.environ, CONVERT_PROC=proc, CLAUDE_CODE_SUBPROCESS_ENV_SCRUB="0")
 
     totals = {"input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "num_turns": 0}
     snapshot = None
@@ -230,9 +263,13 @@ def convert_live(proc):
             turn_prompt = retry_prompt(proc, last_gate)
         else:
             turn_prompt = prompt
-        cmd.append(turn_prompt)
 
-        rc, raw = sh(cmd, env=env, timeout=1800)
+        # Feed the prompt over STDIN, not as a positional arg. Through the Windows
+        # `claude.cmd` shim a long trailing argument is dropped and the CLI aborts
+        # with "Input must be provided either through stdin or as a prompt argument"
+        # (0 turns, ~3s) — exactly the empty attempts run-001 recorded. --print reads
+        # stdin when no prompt arg is given, so this is the portable path.
+        rc, raw = sh(cmd, env=env, timeout=1800, stdin_text=turn_prompt)
         _debug_dump(proc, attempt, "claude", f"rc={rc}\n\n{raw}")
         meta = parse_claude_json(raw)
         if meta:
@@ -411,6 +448,7 @@ def main():
         "model": None if args.dry_run else MODEL,
         "temperature": None if args.dry_run else TEMPERATURE,
         "retry_cap": RETRY_CAP,
+        "gate_bash": BASH,
         "n_procs": len(results),
         "cleared_within_cap": cleared,
         "results": results,
