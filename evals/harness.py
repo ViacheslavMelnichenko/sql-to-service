@@ -371,6 +371,13 @@ def evaluate_proc(proc, manifest, dry_run):
         totals = conv["totals"]
         snapshot = conv["snapshot"]
         attempts, retries = conv["attempts"], conv["retries"]
+        # The agent ADDS the converted proc to generated/runners.json during the run,
+        # so the manifest loaded at startup is stale for a newly-converted proc. Reload
+        # from disk here — without it build_service/source_sha256 KeyError on the new
+        # key AFTER a clean gate, turning a genuine pass into a spurious "error" (and
+        # discarding its tokens/cost). This is exactly what happened to run-001's third
+        # proc: it cleared, then the stale manifest masked it.
+        manifest = load_manifest()
 
     # The SHA-256 identity check (the pre-registered primary metric). Only meaningful
     # if the differential passed — a red gate can't be "identical to golden".
