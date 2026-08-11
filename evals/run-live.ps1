@@ -62,8 +62,9 @@ $deadline = (Get-Date).AddSeconds(240)
 foreach ($svc in @("mssql", "mongo")) {
     Write-Host "[run] waiting for $svc to be healthy ..." -ForegroundColor Cyan
     while ($true) {
-        $cid = "$(docker compose ps -q $svc 2>$null)".Trim()
-        $status = if ($cid) { "$(docker inspect -f '{{.State.Health.Status}}' $cid 2>$null)".Trim() } else { "" }
+        $cid = (docker compose ps -q $svc 2>$null | Out-String).Trim()
+        $status = ""
+        if ($cid) { $status = (docker inspect -f '{{.State.Health.Status}}' $cid 2>$null | Out-String).Trim() }
         if ($status -eq "healthy") { Write-Host "[run] $svc healthy." -ForegroundColor Green; break }
         if ((Get-Date) -gt $deadline) {
             Write-Host "[run] $svc never became healthy (status='$status')." -ForegroundColor Red
