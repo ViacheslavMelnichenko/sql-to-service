@@ -294,21 +294,30 @@ def convert_live(proc):
 
 
 def parse_claude_json(raw):
-    """`claude -p --output-format json` emits one JSON object. Be forgiving about
-    leading noise (NuGet advisories etc. never appear here, but be safe)."""
+    """`claude -p --output-format json` emits one JSON object, but the CLI can
+    append a trailing line to the same stream (e.g. the `Permission mode forced
+    to default ...` scrub warning). Parsing raw[start:] whole then chokes on that
+    tail (JSONDecodeError -> None -> tokens/cost recorded as 0 though the agent
+    ran). Decode just the FIRST object with raw_decode and ignore whatever follows.
+    Still forgiving of leading noise (NuGet advisories etc.)."""
     raw = raw.replace("\r\n", "\n").strip()
     start = raw.find("{")
     if start < 0:
         return None
     try:
-        obj = json.loads(raw[start:])
+        obj, _ = json.JSONDecoder().raw_decode(raw[start:])
     except json.JSONDecodeError:
         return None
-    # Normalise the couple of fields we read to a stable shape.
+    # The dated snapshot the run actually hit. `model` is usually null on this
+    # gateway; the real pin is modelUsage[<key>].canonicalModel (e.g.
+    # "claude-opus-4-8"), captured here so PREREGISTRATION's snapshot is recorded
+    # from the run, not chosen after. Fall back to the modelUsage key itself.
     model_snapshot = None
     mu = obj.get("modelUsage") or {}
     if isinstance(mu, dict) and mu:
-        model_snapshot = next(iter(mu.keys()))
+        first_key = next(iter(mu.keys()))
+        entry = mu.get(first_key) or {}
+        model_snapshot = (entry.get("canonicalModel") if isinstance(entry, dict) else None) or first_key
     return {
         "session_id": obj.get("session_id"),
         "total_cost_usd": obj.get("total_cost_usd"),
