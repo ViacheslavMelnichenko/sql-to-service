@@ -223,30 +223,40 @@ is **green (2/2, both hashes identical)** — this is the scaffold proof, gitign
 and explicitly not citable as a result. **What is missing is the one thing that
 needs a model: the live `run-001.json`.**
 
-**Two concrete blockers on the live path were diagnosed and closed (2026-08-10).**
-An in-session attempt to drive the headless agent produced a *false* "2/3 cleared"
-result — every proc at zero tokens, zero cost, null snapshot — which was quarantined
-(deleted), not committed: it was a dry-run wearing a live label, the exact composed
-result the pre-registration forbids. Root cause, two layers: (1) the harness passed
-`--model claude-opus-4-8-gateway`, the internal gateway id, which the CLI rejects, so
-every attempt failed at zero tokens; fixed by pinning the CLI alias `opus`
-(`EVAL_MODEL`-overridable). (2) The real blocker underneath: a headless `claude -p`
-inherits no interactive `az login`, so the gateway's azureADTokenProvider
-(ChainedTokenCredential) had no credential and returned `api_error`. Fixed by
-authenticating as a service principal via EnvironmentCredential
-(`AZURE_CLIENT_ID`/`TENANT_ID`/`CLIENT_SECRET`), boilerplate in `.env.example`,
-pulled at job time from Infisical.
+**The live-path blocker was diagnosed and closed (2026-08-10).** An in-session
+attempt to drive the headless agent produced a *false* "2/3 cleared" result — every
+proc at zero tokens, zero cost, null snapshot — which was quarantined (deleted), not
+committed: it was a dry-run wearing a live label, the exact composed result the
+pre-registration forbids. Root cause: a `claude -p` spawned **from inside a Claude
+Code session** never authenticates, because `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1`
+strips the model-access secret (`ANTHROPIC_FOUNDRY_API_KEY` — the CLI here reaches
+the model through Anthropic Foundry, `CLAUDE_CODE_USE_FOUNDRY=1`) from every
+subprocess Claude Code launches. With the key gone the CLI falls back to a token
+provider that has nothing and returns `api_error` at zero tokens — which is why the
+"live" run silently degraded to a dry-run wearing a live label. *(An earlier note
+here mis-diagnosed this as an Azure-AD / service-principal problem and the fix
+carried Azure boilerplate; that was wrong — the auth is Foundry-key, not Azure — and
+has been corrected in `.env.example` and the workflow.)* The model string
+`claude-opus-4-8-gateway` was always correct: it is exactly what `~/.claude/
+settings.json` uses.
 
-**The live run now runs as authenticated CI, not on a laptop.** A new manual-only
-`.github/workflows/eval-live.yml` fetches the service principal from Infisical,
-probes headless auth before spending a cent, drives the real agent through the gate,
-and uploads `run-001.json` as an artifact for a human to review and commit. This is
-the honest way to get the number: produced by a logged, authenticated job, not
-typed. **B.3/B.4 are now blocked only on the operator** configuring the Infisical
-machine-identity secrets in the repo and dispatching the workflow — nothing left to
-build. The tail of B.3 (revert A.3 to present tense, replace the demo's illustrative
-Phase-4 table, fill `PREREGISTRATION.md:15` with the captured snapshot) stays parked
-until that artifact exists. B.4 (baseline) rides the same plumbing and dispatch.
+**Two honest ways to produce the real result, neither of which is "from inside a
+Claude Code session":**
+- **Locally**, from a plain shell (not the agent's subprocess) that has
+  `ANTHROPIC_FOUNDRY_API_KEY` + `ANTHROPIC_FOUNDRY_RESOURCE` in its environment:
+  `EVAL_LIVE_OK=1 bash evals/run.sh --live`. The harness inherits the shell's env,
+  so each `claude -p` it spawns authenticates.
+- **In CI**, via the manual-only `.github/workflows/eval-live.yml`: it pulls the
+  Foundry key + resource from Infisical, probes headless auth before spending a cent,
+  drives the real agent through the gate, and uploads `run-001.json` as an artifact
+  for a human to review and commit — the honest way to get the number, produced by a
+  logged, authenticated job rather than typed.
+
+**B.3/B.4 are now blocked only on the operator** running one of the two above —
+nothing left to build. The tail of B.3 (revert A.3 to present tense, replace the
+demo's illustrative Phase-4 table, fill `PREREGISTRATION.md:15` with the captured
+snapshot) stays parked until that artifact exists. B.4 (baseline) rides the same
+plumbing.
 
 **B.6 done.** `gates/differential.sh` now, right after `seed-mongo.sh` regenerates
 `relational.json`, diffs the fresh export against the committed copy the golden was

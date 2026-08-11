@@ -8,13 +8,13 @@
 # logged CI job — not typed on a laptop — is the honest way to get run-001. The
 # artifact it uploads is the thing that later replaces the demo's illustrative table.
 #
-# Auth, the part that is not free: the `claude` CLI here is fronted by a gateway
-# whose azureADTokenProvider uses a ChainedTokenCredential. A headless `claude -p`
-# inherits no interactive `az login`, so it authenticates as a service principal via
-# EnvironmentCredential (AZURE_CLIENT_ID / AZURE_TENANT_ID / AZURE_CLIENT_SECRET).
-# Those three are pulled at job time from Infisical (docs/SECURITY.md §"Secret
-# handling") — never committed, never on disk, never in argv. The only GitHub-native
-# secrets are the Infisical machine-identity credentials that unlock the rest.
+# Auth, the part that is not free: the `claude` CLI here reaches the model through
+# Anthropic Foundry (CLAUDE_CODE_USE_FOUNDRY=1), authenticated with an API key
+# (ANTHROPIC_FOUNDRY_API_KEY) against a named resource (ANTHROPIC_FOUNDRY_RESOURCE).
+# A headless `claude -p` needs both present in its environment. They are pulled at
+# job time from Infisical (docs/SECURITY.md §"Secret handling") — never committed,
+# never on disk, never in argv. The only GitHub-native secrets are the Infisical
+# machine-identity credentials that unlock the rest.
 name: eval-live
 
 on:
@@ -44,6 +44,8 @@ jobs:
     env:
       PYTHON: python3
       MONGO_URI: mongodb://localhost:37017/wwi
+      # Route the CLI through Anthropic Foundry, same as the dev machine.
+      CLAUDE_CODE_USE_FOUNDRY: '1'
       # The model string the harness passes to `--model` — the same value the
       # interactive Claude Code uses (~/.claude/settings.json). The exact dated
       # snapshot is captured from the first live invocation, not chosen after.
@@ -88,11 +90,12 @@ jobs:
       - name: Install the Claude Code CLI
         run: npm install -g @anthropic-ai/claude-code
 
-      # Pull the Azure service principal (and anything else the gateway needs) from
-      # Infisical into this step's environment. The action exports each secret as an
-      # env var for SUBSEQUENT steps; nothing is written to disk. The Infisical
-      # machine-identity credentials are the only GitHub-native secrets — configure
-      # them in Settings → Secrets and variables → Actions.
+      # Pull the Foundry API key + resource from Infisical into this step's
+      # environment. The action exports each secret as an env var for SUBSEQUENT
+      # steps; nothing is written to disk. The Infisical machine-identity credentials
+      # are the only GitHub-native secrets — configure them in Settings → Secrets and
+      # variables → Actions. The secret-path must hold ANTHROPIC_FOUNDRY_API_KEY and
+      # ANTHROPIC_FOUNDRY_RESOURCE.
       - name: Fetch model-access secrets from Infisical
         uses: Infisical/secrets-action@v1.0.9
         with:
@@ -101,20 +104,19 @@ jobs:
           client-secret: ${{ secrets.INFISICAL_CLIENT_SECRET }}
           project-slug: ${{ secrets.INFISICAL_PROJECT_SLUG }}
           env-slug: 'prod'
-          secret-path: '/claude-gateway'
+          secret-path: '/claude-foundry'
 
       - name: Sanity-check headless auth before spending budget
         run: |
-          # A one-shot probe: if the service principal cannot mint a token, fail HERE
+          # A one-shot probe: if the Foundry key is missing or rejected, fail HERE
           # with a clear message rather than burning three attempts per proc on an
-          # api_error. `--model "$EVAL_MODEL"` must be a valid alias (see env above).
+          # api_error.
           set -e
-          [ -n "$AZURE_CLIENT_ID" ]     || { echo "::error::AZURE_CLIENT_ID not set — Infisical fetch or secret-path is wrong"; exit 1; }
-          [ -n "$AZURE_TENANT_ID" ]     || { echo "::error::AZURE_TENANT_ID not set"; exit 1; }
-          [ -n "$AZURE_CLIENT_SECRET" ] || { echo "::error::AZURE_CLIENT_SECRET not set"; exit 1; }
+          [ -n "$ANTHROPIC_FOUNDRY_API_KEY" ]  || { echo "::error::ANTHROPIC_FOUNDRY_API_KEY not set — Infisical fetch or secret-path is wrong"; exit 1; }
+          [ -n "$ANTHROPIC_FOUNDRY_RESOURCE" ] || { echo "::error::ANTHROPIC_FOUNDRY_RESOURCE not set"; exit 1; }
           out="$(claude -p --output-format json --model "$EVAL_MODEL" 'Reply with the single word: ok' 2>&1 || true)"
           echo "$out" | head -20
-          echo "$out" | grep -q '"is_error": *true' && { echo "::error::headless auth probe failed — the SP cannot reach the gateway"; exit 1; }
+          echo "$out" | grep -q '"is_error": *true' && { echo "::error::headless auth probe failed — Foundry key cannot reach the model"; exit 1; }
           echo "auth probe ok"
 
       - name: Live eval — drive the real agent, gate every proc
