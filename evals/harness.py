@@ -85,6 +85,18 @@ DEFAULT_PROCS = [
 # measured, so a reviewer can confirm the committed files are the ones the eval ran.)
 
 
+def _debug_dump(proc, attempt, kind, text):
+    """Opt-in (EVAL_DEBUG=1): write each attempt's raw claude output and gate output
+    to evals/results/debug/ so a failing live run can be diagnosed without re-running.
+    A no-op unless EVAL_DEBUG is set, so it never touches a normal measured run."""
+    if not os.environ.get("EVAL_DEBUG"):
+        return
+    dbg = RESULTS_DIR / "debug"
+    dbg.mkdir(parents=True, exist_ok=True)
+    safe = proc.replace("/", "_").replace("\\", "_")
+    (dbg / f"{safe}.attempt{attempt}.{kind}.txt").write_text(text, encoding="utf-8")
+
+
 def sh(cmd, env=None, timeout=None):
     """Run a shell command from ROOT; return (rc, stdout+stderr)."""
     proc = subprocess.run(
@@ -221,6 +233,7 @@ def convert_live(proc):
         cmd.append(turn_prompt)
 
         rc, raw = sh(cmd, env=env, timeout=1800)
+        _debug_dump(proc, attempt, "claude", f"rc={rc}\n\n{raw}")
         meta = parse_claude_json(raw)
         if meta:
             session_id = meta.get("session_id", session_id)
@@ -232,6 +245,7 @@ def convert_live(proc):
             totals["num_turns"] += int(meta.get("num_turns", 0) or 0)
 
         outcome, last_gate = run_gates(proc)
+        _debug_dump(proc, attempt, "gate", f"outcome={outcome}\n\n{last_gate}")
         if outcome == "cleared":
             return {"attempts": attempt, "retries": attempt - 1, "snapshot": snapshot,
                     "totals": totals, "gate_outcome": outcome, "last_gate": last_gate}

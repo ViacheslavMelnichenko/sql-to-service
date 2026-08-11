@@ -25,6 +25,10 @@ venv/
 # model-driven run-*.json / baseline.json are committed. See evals/results/README.md.
 evals/results/dry-run.json
 
+# Live-run debug capture (EVAL_DEBUG=1): raw claude / gate output per attempt,
+# for diagnosing a failing run. Local scratch, may contain paths — never committed.
+evals/results/debug/
+
 # Ukrainian working copies — every *.uk.md is a private translation, never committed
 *.uk.md
 
