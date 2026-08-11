@@ -41,6 +41,8 @@ Each ADR is one frozen decision the pipeline depends on. They are permanent.
 | Document | What it covers |
 | --- | --- |
 | [`../evals/PREREGISTRATION.md`](../evals/PREREGISTRATION.md) | The measurement method, registered *before* the numbers exist, so the results are falsifiable. The harness (`evals/harness.py`) and its result records land against this spec. |
+| [`../evals/RUNNING.md`](../evals/RUNNING.md) | The operational runbook: how to run the harness (dry vs live, POSIX vs Windows), the prerequisites, the authentication traps, and how to diagnose a failing live run. |
+| [`../evals/results/README.md`](../evals/results/README.md) | How to read a result file honestly — what `mode`, `cleared_within_cap`, and the SHA identity mean. |
 
 ## Build scaffolding (temporary)
 

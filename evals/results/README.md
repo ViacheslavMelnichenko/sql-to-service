@@ -7,9 +7,9 @@ never edited to match a number**.
 
 | File | What it is | Status |
 |------|------------|--------|
-| `run-001.json` | The staged pipeline, driven by the real agent over the run set, retry cap 2. The primary result. | **not yet run** — needs a live headless run (`bash ../run.sh --live`) in an environment that permits an agent loop with tool access. |
+| `run-001.json` | The staged pipeline, driven by the real agent over the run set, retry cap 2. The primary result. | produced by a live headless run (`bash evals/run.sh --live`, or `evals/run-live.ps1` on Windows). See [`../RUNNING.md`](../RUNNING.md). |
 | `baseline.json` | The naive single-prompt control (B.4), same procs, same gate. What `run-001` has to beat (H2). | not yet run |
-| `dry-run.json` | Scaffold check: the harness run with **no model**, measuring the already-committed services. Proves the plumbing (gates, SHA-256 identity, JSON emission) end to end. | **gitignored** — not a citable result. Reproduce with `bash ../run.sh`. |
+| `dry-run.json` | Scaffold check: the harness run with **no model**, measuring the already-committed services. Proves the plumbing (gates, SHA-256 identity, JSON emission) end to end. | **gitignored** — not a citable result. Reproduce with `bash evals/run.sh`. |
 
 ## Reading a result honestly
 

@@ -140,6 +140,10 @@ The one artifact that cannot be faked is the **analysis paragraph** in
 `evals/results/summary.md`: what the differential failures had in common. Writing
 it truthfully requires having done the work.
 
+The operational detail — how to actually run this (dry vs live, POSIX vs Windows),
+the prerequisites, and the authentication traps — lives in the runbook,
+[`../evals/RUNNING.md`](../evals/RUNNING.md).
+
 ---
 
 ## 6. Why not the obvious alternatives

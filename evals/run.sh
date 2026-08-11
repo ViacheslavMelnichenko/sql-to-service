@@ -21,9 +21,13 @@
 #   bash evals/run.sh --live          # live run-001 — prompts for confirmation
 #   bash evals/run.sh --live --yes    # live, non-interactive (CI with a real key)
 #
+# On Windows, use evals/run-live.ps1 from a PowerShell window you opened yourself
+# (not a Claude Code session — the Foundry key is scrubbed from spawned subprocesses).
+#
 # Prereqs for --live: the two containers up (:11433 / :37017), `claude` on PATH and
 # authenticated, and an environment that permits a headless agent loop with tool
-# access. See docs/architecture.md §5 and evals/PREREGISTRATION.md.
+# access. The full runbook — both paths, prerequisites, and the auth traps — is
+# evals/RUNNING.md; see also docs/architecture.md §5 and evals/PREREGISTRATION.md.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

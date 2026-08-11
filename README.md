@@ -215,15 +215,18 @@ docker compose up -d         # SQL Server on :11433, MongoDB on :37017
 ./corpus/restore.sh          # restore + seed the sample DB (pinned .bak, SHA-checked)
 ./gates/verify.sh            # build + unit + differential against committed output
                              #   → reproduces the published table, with NO model calls
-./run.sh                     # optional, PAID: re-run the agent end to end
-                             #   → lands with the Phase-4 harness; see docs/tasks/
+bash evals/run.sh            # scaffold check, no model, $0 (writes dry-run.json)
+bash evals/run.sh --live     # optional, PAID: re-run the agent end to end
+                             #   → drives the harness; full runbook in evals/RUNNING.md
 ```
 
 `verify.sh` is the audit: it regenerates the reported results from committed
-artifacts without calling any model, and it exists today. Regeneration
-(`run.sh`) is a separate, opt-in, paid command that lands with the Phase-4
-harness (`evals/harness.py`) — so nothing here surprises you with a bill, and
-nothing claims to run before it does.
+artifacts without calling any model, and it exists today. `evals/run.sh` defaults
+to a **dry run** (the harness with no model, measuring the committed services for
+free); `--live` is a separate, opt-in, paid command that drives the real agent —
+so nothing here surprises you with a bill. The complete operational runbook, both
+POSIX and Windows, with the environment traps spelled out, is
+[`evals/RUNNING.md`](evals/RUNNING.md).
 
 Ports `11433` / `37017` are non-standard on purpose, to avoid colliding with a
 SQL Server or MongoDB you may already run locally.
