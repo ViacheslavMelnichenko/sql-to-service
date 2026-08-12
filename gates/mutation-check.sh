@@ -21,6 +21,11 @@
 #     precision-loss (decimal→double) · break-order · type-coercion
 #   The precision-loss mutant is the one the showcase proc CANNOT exercise (it returns
 #   no decimal column); this proc is why it exists in the corpus (ADR-0006).
+#   Integration.GetTransactionUpdates (UNION ALL of two windowed arms, LEFT JOIN)
+#     drop-window · drop-arm · precision-loss · type-coercion
+#   NOT break-join/coalesce: this seed has no row where the invoice's CustomerID differs
+#   from the transaction's, so that mutant would be a no-op (ADR-0002 branch hole) — a
+#   gate with no teeth is exactly what this check forbids, so it is left out, not faked.
 #
 # Mechanism: back up the service source, apply ONE single-line mutation, run the
 # differential (Mongo seeded once up front, then NO_SEED=1 so each mutant reuses it),
@@ -133,16 +138,21 @@ mutants_SearchForCustomers() {
 
 mutants_GetStockHoldingUpdates() {
   log "injecting 3 mutations; each must turn the differential red"
-  # 1. precision-loss — read LastCostPrice through a double, not a decimal. THE mutant
-  #    the whole artifact exists to catch (ADR-0006). Reading via double collapses the
-  #    fixed scale: 8.00 → 8.0d → Convert.ToDecimal → 8m (scale 0) → JSON `8`, which
-  #    canonicalises to bare `8`, not golden's "8.0000".
+  # 1. precision-loss — emit LastCostPrice THROUGH a double instead of the exact
+  #    fixed-scale-4 string. THE mutant the whole artifact exists to catch (ADR-0006).
+  #    SUBTLE, and worth stating because it bit a refactor once: the service emits a
+  #    scale-4 STRING ("8.0000"), and canonicalise.py re-pads any dotted numeric string
+  #    to scale 4 on BOTH sides. So a mutant that only reads via double but STILL emits
+  #    via ToString("F4") is a no-op — F4 re-imposes the scale the double lost. To bite,
+  #    the mutant must also bypass the F4 re-pad: ((double)value).ToString() serialises
+  #    8.00 → 8.0d → "8" (no dot), which canonicalise leaves as bare "8" (it only
+  #    re-pads strings containing "." or "e"), and "8" != golden's "8.0000".
   #    BRANCH-HOLE NOTE (ADR-0002): the StockItemID=2 row (LastCostPrice 8.00) is
-  #    LOAD-BEARING for this mutant. The 12.50 row alone would NOT catch it — 12.5 via
-  #    double still canonicalises to "12.5000" and matches golden. It is the whole-number
-  #    .00 value whose scale-collapse the gate sees. Do not drop that row from the seed.
-  mutate 'Decimal128.ToDecimal(doc[field].AsDecimal128);' \
-         'System.Convert.ToDecimal(Decimal128.ToDouble(doc[field].AsDecimal128));'
+  #    LOAD-BEARING. The 12.50 row alone would NOT catch it — 12.5 via double is "12.5",
+  #    which HAS a dot and re-pads to "12.5000", matching golden. It is the whole-number
+  #    .00 value whose scale double drops to a dotless string. Do not drop that row.
+  mutate 'return value.ToString("F4", CultureInfo.InvariantCulture);' \
+         'return ((double)value).ToString(CultureInfo.InvariantCulture);'
   expect_caught "precision-loss"
   # 2. break-order — ascending StockItemID → descending (right rows, wrong order).
   mutate '.OrderBy(StockItemId)' \
@@ -151,6 +161,41 @@ mutants_GetStockHoldingUpdates() {
   # 3. type-coercion — emit WWI Stock Item ID as a string, not an int.
   mutate 'private static int StockItemId(BsonDocument h) => h["_id"].ToInt32();' \
          'private static string StockItemId(BsonDocument h) => h["_id"].ToInt32().ToString();'
+  expect_caught "type-coercion"
+}
+
+mutants_GetTransactionUpdates() {
+  log "injecting 4 mutations; each must turn the differential red"
+  # This proc's shape is a UNION ALL of two windowed arms with a LEFT JOIN. Its bug
+  # classes are the window predicate, the arm union, decimal emission, and id typing.
+  # NOT included, deliberately (ADR-0002): a COALESCE/break-join mutant has NO teeth on
+  # THIS seed — every joined row has i.CustomerID == ct.CustomerID (jan: WWI Customer ID
+  # == WWI Bill To Customer ID == 1), so swapping the coalesce order or dropping the
+  # join changes no output. Adding that mutant would need a seed row where the invoice's
+  # CustomerID differs from the transaction's; until the seed carries it, claiming to
+  # test the join here would be a gate with no teeth, which is the thing this check bans.
+  # 1. drop-window — neuter the half-open window so EVERY transaction is returned
+  #    regardless of cutoff. The empty-window case (2019) then yields rows instead of
+  #    [], and jan pulls in Feb's CT 2 — the differential goes red.
+  mutate 'return when.Value > lastCutoff && when.Value <= newCutoff;' \
+         'return true;'
+  expect_caught "drop-window"
+  # 2. drop-arm — never emit the supplier arm. The jan case loses ST 1 (its only
+  #    supplier row, SupplierInvoiceNumber "SI-001"), so the row bag no longer matches.
+  mutate 'rows.AddRange(SupplierArm(lastCutoff, newCutoff));' \
+         '// rows.AddRange(SupplierArm(lastCutoff, newCutoff));'
+  expect_caught "drop-arm"
+  # 3. precision-loss — same double-bypass-F4 mutant as the stock proc, on the money
+  #    columns. 250.00/0.00 via double serialise dotless ("250"/"0"), which canonicalise
+  #    leaves un-padded, so they differ from golden's "250.0000"/"0.0000". (See the long
+  #    note on the stock proc for why bypassing F4 is what gives this mutant teeth.)
+  mutate 'return value.ToString("F4", CultureInfo.InvariantCulture);' \
+         'return ((double)value).ToString(CultureInfo.InvariantCulture);'
+  expect_caught "precision-loss"
+  # 4. type-coercion — emit the transaction id as a string, not an int. Both arms use
+  #    Id(...) for their *-Transaction ID column, so "1" vs 1 breaks the comparison.
+  mutate 'private static int Id(BsonDocument doc) => doc["_id"].ToInt32();' \
+         'private static string Id(BsonDocument doc) => doc["_id"].ToInt32().ToString();'
   expect_caught "type-coercion"
 }
 
@@ -175,6 +220,7 @@ PYEOF
   case "$CURPROC" in
     Website.SearchForCustomers)         mutants_SearchForCustomers ;;
     Integration.GetStockHoldingUpdates) mutants_GetStockHoldingUpdates ;;
+    Integration.GetTransactionUpdates)  mutants_GetTransactionUpdates ;;
     *) die "no mutation catalogue defined for '$CURPROC' — add one (ADR-0006: every converted proc needs proven teeth)" ;;
   esac
 
