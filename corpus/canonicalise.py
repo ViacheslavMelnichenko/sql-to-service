@@ -8,7 +8,7 @@ output of the generated service — pass through THIS function before comparison
 representation differences (row order, decimal scale, whitespace, key order).
 
 It is deliberately pure and dependency-free (stdlib only): it must run identically
-in the tools container, in CI, and on a reviewer's machine, and it must never need
+in the tools container, in CI, and on a local machine, and it must never need
 a model. Determinism here is the foundation the trust rests on.
 
 Normal form

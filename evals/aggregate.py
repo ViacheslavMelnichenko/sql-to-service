@@ -7,7 +7,7 @@ invocation — a full, from-scratch conversion of the run set driven by the real
 agent. This script stitches the samples together into the pre-registered
 distribution: per proc, `cleared/k`, whether it is `flaky` (differs across the k
 runs), and the spread of cost/tokens/retries. It computes nothing the samples don't
-already contain — it is pure aggregation, so a reviewer can recompute run-001.json
+already contain — it is pure aggregation, so anyone can recompute run-001.json
 from the committed sample files and get the same bytes.
 
 Why sample-then-aggregate, and not a --k loop inside the harness:

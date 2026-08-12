@@ -23,7 +23,7 @@ Two modes:
   * --dry-run  : NO model, NO API spend. Treats the ALREADY-COMMITTED services as
                  "what the run produced" and exercises every deterministic part of
                  the harness end to end (gates, SHA identity, cost accounting shape,
-                 JSON emission). This is what CI and a reviewer run to prove the
+                 JSON emission). This is what CI and a local run use to prove the
                  scaffold is correct without paying for a model. Cost is 0 and the
                  outcome reflects the committed artifact, honestly labelled.
   * live (default) : spawns `claude -p` per attempt. Requires an environment that
@@ -107,7 +107,7 @@ DEFAULT_PROCS = [
 
 # Per-proc source files that make up a conversion artifact, for the source hash.
 # (The output hash is the real metric; the source hash records WHICH artifact was
-# measured, so a reviewer can confirm the committed files are the ones the eval ran.)
+# measured, so anyone can confirm the committed files are the ones the eval ran.)
 
 
 def _debug_dump(proc, attempt, kind, text):
@@ -196,7 +196,7 @@ def sha256(text):
 
 def source_sha256(proc, manifest):
     """Hash the conversion artifact's source (service file), so the result records
-    WHICH files were measured — a reviewer hashes the committed files and confirms
+    WHICH files were measured — anyone hashes the committed files and confirms
     they are the ones the eval ran, closing the 'was this hand-fixed after?' gap."""
     service = ROOT / manifest[proc]["service"]
     h = hashlib.sha256()

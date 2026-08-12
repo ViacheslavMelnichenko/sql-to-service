@@ -2,7 +2,7 @@
 
 The corpus is not "whatever procedures exist" — it is a **deliberately chosen,
 falsifiable set**. The criterion is written here *before* the outcome is known, so
-a reviewer can check we didn't cherry-pick the procedures that happened to convert
+anyone can check we didn't cherry-pick the procedures that happened to convert
 well. Every candidate that meets the criterion is either in, or excluded with a
 one-line reason.
 
@@ -128,7 +128,7 @@ scan would have produced, avoided.
 - The specific 3 complex procs chosen (`GetCity` for geography, `GetCustomer` and
   `GetSupplier` as the cursor+temporal representatives) is a judgement call to get
   one geography branch and two temporal-reconstruction branches without carrying
-  all seven. A reviewer who wants the full complex tier flips the four `hold` rows.
+  all seven. Anyone who wants the full complex tier flips the four `hold` rows.
 - The **12–20 band / cap 20** is a sizing choice tied to the S budget, not a
   property of the corpus.
 - Criterion 1 was refined during Phase 1 from "no INSERT/UPDATE/DELETE/MERGE" to

@@ -68,7 +68,7 @@ itself says "value-by-value". The demo already says "identical *after
 canonicalise*". `byte-for-byte` is true only of the golden *stability* check
 (`verify-stable.sh`), which is a different thing.
 **Why it matters.** It over-sells the gate's strictness and is internally
-inconsistent — a reviewer who reads the code catches the README lying about its
+inconsistent — anyone who reads the code catches the README lying about its
 own mechanism. (hiring + MLOps + pre-sales all flagged)
 **Done when.** README/architecture say "value-based, after canonicalisation" for
 the differential; "byte-identical" is used only where it's literally true (golden
@@ -121,7 +121,7 @@ over-claim that, once noticed, retroactively discredits the honest parts.
 honesty asset.
 
 ### A.5 — Repo hygiene: delete committed mistakes
-**Problem.** Three "browsing reviewer will notice" tells:
+**Problem.** Three tells a browsing reader will notice:
 - `corpus/_bak;C` — a directory literally named with a stray `;C`, a committed
   shell mistake.
 - Two guard-hook implementations coexist — `.claude/hooks/guard-path.sh` **and**
@@ -135,7 +135,7 @@ wired one; `.gitignore` covers `__pycache__/`, `.pytest_cache/`, and any other
 build/test cruft; `git status` is clean of them.
 
 ### A.6 — Reconcile the number/count drifts
-**Problem.** Small inconsistencies a hostile reviewer uses to argue "if the small
+**Problem.** Small inconsistencies a hostile reader uses to argue "if the small
 numbers don't reconcile, why trust the big ones":
 - `docs/adr/0002` targets "~80–160 golden records"; actual corpus is 67 (below the
   band). ADR-0007 supersedes at 67 but 0002 was never reconciled/annotated.
@@ -217,7 +217,7 @@ is now proc-aware via `CONVERT_PROC`), decompose the gate into a failure taxonom
 (`failed:build|unit|differential|retry_cap`), and compute the pre-registered
 `cleared_within_cap` metric — including the **SHA-256 identity check** the
 pre-registration promises (canonical produced output vs canonical golden), plus a
-`source_sha256` so a reviewer can confirm which artifact was measured. A model-free
+`source_sha256` so anyone can confirm which artifact was measured. A model-free
 `--dry-run` exercises every deterministic part against the committed services and
 is **green (2/2, both hashes identical)** — this is the scaffold proof, gitignored
 and explicitly not citable as a result. **What is missing is the one thing that
@@ -267,7 +267,7 @@ so it is *content* identity we assert (verified the assertion has teeth — an i
 byte is caught — and that a clean export passes).
 
 **B.5 done.** `.github/workflows/verify.yml` runs on every push/PR to `main`: it
-brings the two engines up via the SAME `docker-compose.yml` a reviewer uses (not
+brings the two engines up via the SAME `docker-compose.yml` a local run uses (not
 GitHub `services:` — the seed path shells in with `docker compose exec mssql`, so
 the containers must be compose-managed), waits on both healthchecks, then runs
 `gates/verify.sh` + `gates/mutation-check.sh` + the harness `--dry-run`, all with
@@ -380,7 +380,7 @@ deliberately outside the trusted base for correctness). Both linked from
 **C.3 done.** The demo lede no longer opens "An AI wrote this migration" (an implied
 autonomy the harness doesn't demonstrate) — it now leads with the engineering
 discipline and states outright that a human carried the showcase through the stages
-by hand. README claim #3 and the "reviewer will find here" harness paragraph are
+by hand. README claim #3 and the "following one conversion end to end" harness paragraph are
 softened from present-tense autonomy to "built to / next step," with the by-hand
 fact stated explicitly. Mirrored in `README.uk.md`. Nothing now claims autonomy the
 harness doesn't yet show; the pitch is the judgment (non-circular oracle, proven
@@ -392,7 +392,7 @@ deterministic, single-result-set** procs — `corpus/SELECTION.md` excludes
 `GETDATE`/`NEWID`/`SYSDATETIME` and base-table writers. In a real 500-proc backlog
 the majority write state, use non-deterministic functions, return multiple result
 sets, or depend on session state. This is a hard ceiling, not a matter of effort.
-It is implied in `SELECTION.md` but a reviewer evaluating scale needs it up front.
+It is implied in `SELECTION.md` but anyone evaluating scale needs it up front.
 **Why it matters.** Named openly, it turns a perceived hole into a scoped,
 defensible claim ("I address the tractable tier correctly, here's what the rest
 needs"). Buried, it reads as the method silently failing on 80% of the work.

@@ -26,8 +26,8 @@
 -- SHARED tables (Sales.Customers, Purchasing.Suppliers, Application.People,
 -- Application.Cities) into system-versioned temporal tables, adds their *_Archive
 -- history and the lookup dimensions those procs join to, and carries a geography
--- Location column (ADR-0007). Both tranches live in this one file so a reviewer
--- reads the whole input top to bottom.
+-- Location column (ADR-0007). Both tranches live in this one file so the whole
+-- input reads top to bottom.
 --
 -- Sizing note (ADR-0002): the working target of "~50–200 rows per key table" is a
 -- loose upper band, not a floor. What the ADR actually decrees is "the minimal set

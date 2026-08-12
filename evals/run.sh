@@ -8,7 +8,7 @@
 #      no model, no API spend, no headless agent loop. It exercises every
 #      deterministic part of the harness (gates, the SHA-256 identity check, cost
 #      accounting shape, JSON emission) against the ALREADY-COMMITTED services and
-#      writes evals/results/dry-run.json. This is what CI and a reviewer run to
+#      writes evals/results/dry-run.json. This is what CI and a local run use to
 #      prove the scaffold is correct for free.
 #
 #   2. MAKE A LIVE RUN AN EXPLICIT, DELIBERATE ACT. A live run drives `claude -p`

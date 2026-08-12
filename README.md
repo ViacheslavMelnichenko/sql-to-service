@@ -41,8 +41,7 @@ here is real platform mechanism, not a wrapper script pretending to be an agent.
 
 ## What this proves
 
-Not "AI can convert SQL." It can. This proves something a reviewer actually cares
-about:
+Not "AI can convert SQL." It can. This proves the thing that actually matters:
 
 > *I don't ask a model to convert code — I build the system that lets you **trust**
 > an unreliable model on migration work: an independent oracle that catches its
@@ -155,8 +154,8 @@ hand-fitted document store.
 ## Built on Claude Code — the four primitives
 
 This is where "AI engineering" stops being a slogan. Each stage of the pipeline is
-a real Claude Code mechanism, not a renamed function. A reviewer who knows Claude
-Code opens `.claude/` and recognizes their own tools.
+a real Claude Code mechanism, not a renamed function. Open `.claude/` and, if you
+know Claude Code, you recognise the primitives on sight.
 
 ```mermaid
 flowchart TB
@@ -192,9 +191,9 @@ presented as a settled corpus-wide result before that distribution completes.
 
 ---
 
-## What a reviewer will find here
+## Following one conversion end to end
 
-The repository is designed to be judged **without running it** — the run path
+The repository is designed to be read **without running it** — the run path
 exists to make the numbers falsifiable, not to be the experience. Follow one
 conversion end to end, entirely in committed files:
 
@@ -212,7 +211,7 @@ the rest of the selected tier; they convert as the harness runs.)*
 
 ---
 
-## Reproduce (for the one reviewer who runs it)
+## Reproduce (for anyone who runs it)
 
 Standing the whole thing up is deliberately production-realistic and therefore
 heavy: it restores a public sample database and runs a real agent.

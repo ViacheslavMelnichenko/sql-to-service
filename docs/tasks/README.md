@@ -281,7 +281,7 @@ control remain.
 > open, deliberately: the paid `regenerate.yml` (5.3), `CHANGELOG.md` (5.5), and
 > the manual "make the repo public" step (5.6).
 
-**Phase-5 exit:** a reviewer landing cold gets the verdict in 90 seconds, can
+**Phase-5 exit:** someone landing cold gets the verdict in 90 seconds, can
 follow one conversion end to end without running anything, and sees a green badge
 that GitHub — not the author — vouches for. **Met for the parts that ship in the
 repo;** the paid regenerate workflow, changelog, and go-public step remain.
@@ -300,8 +300,8 @@ contradicting itself. Most are Phase-0 ADRs above; flagged here so none is lost:
   README "What this is not"; keep it the single source.
 - **"How done is measured" per phase.** The exit lines above are the contract;
   when a phase closes, its exit line moves into the permanent doc it validated.
-- **Cut-list.** When a task is `cut`, record the one-line why here so a reviewer
-  doesn't read an absence as an oversight.
+- **Cut-list.** When a task is `cut`, record the one-line why here so an absence
+  doesn't read as an oversight.
 
 ---
 

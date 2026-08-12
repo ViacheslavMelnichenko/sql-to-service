@@ -1,7 +1,7 @@
 # Corpus source
 
 The corpus is the public, MIT-licensed **WideWorldImporters** sample database
-published by Microsoft. Using a well-known public sample is deliberate: a reviewer
+published by Microsoft. Using a well-known public sample is deliberate: anyone
 can recognize the schema at a glance, verify our procedure extracts against the
 upstream source, and reproduce the whole thing without any private data.
 
@@ -17,7 +17,7 @@ upstream source, and reproduce the whole thing without any private data.
 
 > **Why Standard, not Full.** The **Full** backup uses in-memory OLTP filegroups
 > and columnstore features that fail to restore inside a Linux SQL Server
-> container — the exact environment `docker compose` gives a reviewer. The
+> container — the exact environment `docker compose` gives you. The
 > **Standard** backup restores cleanly on `mcr.microsoft.com/mssql/server` and
 > carries the same schema and the same stored procedures we convert. Choosing it
 > is what keeps "reproduce from a clean clone" honest.

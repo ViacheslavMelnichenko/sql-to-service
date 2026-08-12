@@ -1,6 +1,6 @@
-# The reproduction environment. `docker compose up -d` gives a reviewer the exact
+# The reproduction environment. `docker compose up -d` gives you the exact
 # two engines this artifact converts between, on NON-standard ports (11433 / 37017)
-# so they never collide with a SQL Server or Mongo the reviewer already runs on the
+# so they never collide with a SQL Server or Mongo you already run on the
 # default 1433 / 27017. See docs/adr and corpus/SOURCE.md for the why.
 #
 # Nothing here is the artifact — the artifact is the golden capture and the gate.

@@ -16,7 +16,7 @@ size-S artifact.
 
 - Keep the size-S budget; don't add a subsystem the artifact doesn't need to prove
   its thesis.
-- The gate must be inspectable by a reviewer *and* callable by a hook *and*
+- The gate must be inspectable by a human *and* callable by a hook *and*
   callable by the agent — ideally the same artifact for all three.
 - Leave a clear, honest path to demonstrate MCP competence without inflating scope
   now.
@@ -38,7 +38,7 @@ Expose the gate-tools as **Bash scripts** under `gates/` (`build.sh`, `unit.sh`,
 
 - **callable by the agent** through the Bash tool,
 - **callable by a hook** (`PostToolUse`, `Stop`) with the same invocation,
-- **readable by a reviewer** as plain shell — the gate has no hidden magic.
+- **readable by a human** as plain shell — the gate has no hidden magic.
 
 **MCP is a planned stretch, not part of the core.** Once the harness and gate are
 standing and the budget allows, one tool (`diff_against_golden`) is reimplemented
@@ -52,7 +52,7 @@ marked as optional and additive, never blocking the core.
 - **Positive:** honest MCP path exists without paying for it up front.
 - **Cost:** a Bash script is a weaker "typed contract" signal than MCP — accepted;
   the stretch closes it if the budget remains.
-- **Cost:** shell portability care (the CI and reviewer run Linux containers;
+- **Cost:** shell portability care (CI and the local run both use Linux containers;
   scripts target POSIX sh).
 
 ## Links

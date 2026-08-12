@@ -316,7 +316,7 @@
         <p class="sec-eyebrow">The disarming fact first</p>
         <h3 class="sec-title">You can audit the whole thing for free</h3>
         <p>The single most useful thing to know before anything else: <strong>you can run the entire correctness audit yourself, right now, for $0 and zero model calls.</strong> A model API key isn't needed until the very last, clearly-marked, paid step. Everything before it is deterministic scripts over committed files.</p>
-        <p>So this deck walks the repository the way a reviewer should: each step is a <strong>Do</strong> (a command to run) paired with a <strong>Check</strong> (the output that proves it worked). You are never asked to take a claim on faith when a command can settle it.</p>
+        <p>So this deck walks the repository the way it is meant to be audited: each step is a <strong>Do</strong> (a command to run) paired with a <strong>Check</strong> (the output that proves it worked). You are never asked to take a claim on faith when a command can settle it.</p>
       </section>
 
       <section class="sec">
@@ -673,7 +673,7 @@ cat generated/Website.SearchForCustomers.review.md   <span class="c"># the revie
       <section class="sec">
         <p class="sec-eyebrow">Why it matters</p>
         <h3 class="sec-title">The audit is a script, not a claim</h3>
-        <p>The gate is four small POSIX-sh tools — <code>build</code>, <code>unit</code>, <code>differential</code>, and <code>verify</code> that chains them. They can be called by a hook, a human, or CI, and they call <em>no model</em>. That's what makes this an audit rather than a claim: reproducing the published verdict costs zero tokens and zero dollars, so a skeptical reviewer never has to take the result on faith — they re-run it.</p>
+        <p>The gate is four small POSIX-sh tools — <code>build</code>, <code>unit</code>, <code>differential</code>, and <code>verify</code> that chains them. They can be called by a hook, a human, or CI, and they call <em>no model</em>. That's what makes this an audit rather than a claim: reproducing the published verdict costs zero tokens and zero dollars, so a skeptic never has to take the result on faith — they re-run it.</p>
       </section>
 
       <section class="sec">
@@ -985,7 +985,7 @@ cleared 3   ·   failed:differential 0   ·   flaky 0   ·   failed:retry_cap 0<
         <p class="sec-eyebrow">Спершу — обеззброювальний факт</p>
         <h3 class="sec-title">Увесь аудит можна провести безкоштовно</h3>
         <p>Найкорисніше, що варто знати до всього іншого: <strong>увесь аудит правильності можна запустити самому, просто зараз, за $0 і з нулем викликів моделі.</strong> API-ключ моделі не потрібен аж до останнього, чітко позначеного платного кроку. Усе до нього — це детерміновані скрипти над закомієними файлами.</p>
-        <p>Тож ця презентація проходить репозиторій так, як має рецензент: кожен крок — це <strong>Do</strong> (команда, яку запустити) у парі з <strong>Check</strong> (вивід, що доводить, що спрацювало). Вас ніколи не просять повірити на слово там, де питання може закрити команда.</p>
+        <p>Тож ця презентація проходить репозиторій так, як його й належить аудитувати: кожен крок — це <strong>Do</strong> (команда, яку запустити) у парі з <strong>Check</strong> (вивід, що доводить, що спрацювало). Вас ніколи не просять повірити на слово там, де питання може закрити команда.</p>
       </section>
 
       <section class="sec">
@@ -1342,7 +1342,7 @@ cat generated/Website.SearchForCustomers.review.md   <span class="c"># верд�
       <section class="sec">
         <p class="sec-eyebrow">Чому це важливо</p>
         <h3 class="sec-title">Аудит — це скрипт, а не заява</h3>
-        <p>Перевірка — це чотири маленькі інструменти на POSIX-sh: <code>build</code>, <code>unit</code>, <code>differential</code> і <code>verify</code>, що їх звʼязує. Їх може викликати хук, людина або CI, і вони не викликають <em>жодної моделі</em>. Саме це робить її аудитом, а не заявою: відтворення опублікованого вердикту коштує нуль токенів і нуль доларів, тож скептичний рецензент ніколи не мусить приймати результат на віру — він його перезапускає.</p>
+        <p>Перевірка — це чотири маленькі інструменти на POSIX-sh: <code>build</code>, <code>unit</code>, <code>differential</code> і <code>verify</code>, що їх звʼязує. Їх може викликати хук, людина або CI, і вони не викликають <em>жодної моделі</em>. Саме це робить її аудитом, а не заявою: відтворення опублікованого вердикту коштує нуль токенів і нуль доларів, тож скептик ніколи не мусить приймати результат на віру — він його перезапускає.</p>
       </section>
 
       <section class="sec">

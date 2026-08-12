@@ -47,7 +47,7 @@ sql() {
 # the plain call succeeds; on a Windows host behind a proxy whose schannel can't
 # reach the revocation endpoint (CRYPT_E_NO_REVOCATION_CHECK) we retry ONCE with
 # --ssl-no-revoke, which relaxes revocation checking ONLY — cert validation still
-# happens, and the flag is a harmless no-op on the Linux reviewer path. The SHA
+# happens, and the flag is a harmless no-op on the Linux path. The SHA
 # gate below is the real integrity check regardless.
 mkdir -p "$BAK_DIR"
 if [ ! -f "$BAK_FILE" ]; then

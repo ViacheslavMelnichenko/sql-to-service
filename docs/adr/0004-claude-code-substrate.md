@@ -9,7 +9,7 @@
 The thesis is "engineering *around* AI," so the agentic machinery has to be real,
 not a slogan. A thin Python script that calls a model API in a loop and names its
 functions "agent" and "hook" would be exactly the thing this artifact exists to be
-better than. The reviewer we're aiming at knows the difference on sight.
+better than. The senior engineer we're aiming at knows the difference on sight.
 
 ## Decision drivers
 
@@ -17,7 +17,7 @@ better than. The reviewer we're aiming at knows the difference on sight.
   mechanisms*, so the labels are backed by reality, not renamed code.
 - Context separation between stages must be structural, not simulated by trimming
   a prompt string.
-- The target reviewer should recognize their own tools when they open the repo.
+- The target audience should recognize their own tools when they open the repo.
 
 ## Considered options
 
@@ -52,7 +52,7 @@ than let an unbacked label cost more later.
 ## Consequences
 
 - **Positive:** the primitives are backed by platform mechanism; `.claude/` becomes
-  a first-class exhibit a reviewer recognizes.
+  a first-class exhibit the audience recognizes.
 - **Positive:** hooks give us in-loop gating for free — the "gate every transition"
   claim is a platform feature, not our plumbing.
 - **Cost:** ties the artifact to Claude Code; reproduction needs it. Acceptable —

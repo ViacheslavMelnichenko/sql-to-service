@@ -2,7 +2,7 @@
 --
 -- Runs against the restored WideWorldImporters and emits, for every procedure in
 -- the two candidate schemas, the facts the selection criterion (corpus/SELECTION.md)
--- turns into a verdict. It is committed and re-runnable so a reviewer can confirm we
+-- turns into a verdict. It is committed and re-runnable so anyone can confirm we
 -- did not hand-pick: the SAME query that produced the enumeration table is here to
 -- run again.
 --

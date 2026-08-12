@@ -87,7 +87,7 @@ tranched.
 ## Tranche 2 as built
 
 Tranche 2 is complete; both tranches now live in the one `relational.sql`
-(a reviewer reads the whole input top to bottom, per the positive consequence
+(the whole input reads top to bottom, per the positive consequence
 below). Three implementation decisions were forced by the temporal procs and are
 recorded here so they read as design, not accident:
 
@@ -134,7 +134,7 @@ recorded here so they read as design, not accident:
 - **Positive:** Phase 1 is de-risked — a working, inspectable seed and green gate
   exist before the hard temporal seeding is attempted.
 - **Positive:** the seed is fully auditable and reproducible without the 121 MB
-  restore; a reviewer reads `relational.sql` top to bottom.
+  restore; `relational.sql` reads top to bottom.
 - **Positive:** minimal tables (referenced columns only) keep the seed readable
   and make every column's presence justifiable by a proc that reads it.
 - **Cost:** the seed schema is hand-maintained and must stay in sync with the

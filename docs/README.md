@@ -4,9 +4,9 @@ Every document in this repository, in reading order. Start at the top; each
 layer assumes the one above it.
 
 The design is deliberately split across small files rather than one large
-document — one decision per ADR, so a reviewer can check a single claim without
-reading the whole argument, and so a decision can be revised without touching the
-others. This page is the map that ties them together.
+document — one decision per ADR, so a single claim can be checked without reading
+the whole argument, and so a decision can be revised without touching the others.
+This page is the map that ties them together.
 
 ## Start here
 

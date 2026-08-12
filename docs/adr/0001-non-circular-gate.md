@@ -17,7 +17,7 @@ proves nothing.
 ## Decision drivers
 
 - The oracle must be causally independent of the model.
-- A reviewer must be able to see *why* it is independent, not take it on faith.
+- Anyone must be able to see *why* it is independent, not take it on faith.
 - The comparison must be mechanical and reproducible without model calls.
 
 ## Considered options

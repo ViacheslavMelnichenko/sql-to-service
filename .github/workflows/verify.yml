@@ -1,12 +1,12 @@
 # The gate, in CI (B.5 / Phase-5 task 5.2). The whole pitch of this repo is that a
 # deterministic gate reproduces the correctness verdict with no model in the loop —
 # so the gate has to be the thing automation runs on every push, not just something
-# a reviewer *could* run locally. A green check here is GitHub vouching for exactly
+# a person *could* run locally. A green check here is GitHub vouching for exactly
 # the command the walkthrough tells a reader to run themselves.
 #
 # What it does, in order:
 #   1. Bring up the two engines the artifact converts between, via the SAME
-#      docker-compose.yml a reviewer uses (not GitHub `services:` — the seed path
+#      docker-compose.yml a local run uses (not GitHub `services:` — the seed path
 #      shells in with `docker compose exec mssql`, so the containers must be
 #      compose-managed for that to resolve).
 #   2. Wait for both healthchecks (compose already defines them).

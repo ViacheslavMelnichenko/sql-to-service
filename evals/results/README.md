@@ -23,7 +23,7 @@ never edited to match a number**.
   built service produces is SHA-256 identical to the canonical golden. The two
   hashes are in `identity` so anyone can recompute them. In a **sample** file it is
   a boolean per proc; in the **aggregate** it becomes `cleared/k` per proc.
-- **`source_sha256`** records *which* service file was measured, so a reviewer can
+- **`source_sha256`** records *which* service file was measured, so anyone can
   hash the committed file and confirm the eval ran the artifact in the repo — not a
   hand-fixed copy.
 - **`independent`** (aggregate only) is the audit that a sample really regenerated:
@@ -41,5 +41,5 @@ sets `EVAL_LIVE_OK` only after a typed confirmation) because it spends real API
 budget and drives a headless agent loop with tool access. Three samples, then
 `py evals/aggregate.py` stitches them into `run-001.json` — a *computed* file, never
 a composed one. The samples are committed alongside it, so the aggregate is
-recomputable from its inputs and a reviewer never has to trust the summary over the
+recomputable from its inputs and no one has to trust the summary over the
 data.

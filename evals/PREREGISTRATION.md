@@ -2,7 +2,7 @@
 
 Written **before `run-001`**, committed, and never edited to match a result. Its
 purpose is to make the eval falsifiable: the hypotheses and thresholds are fixed in
-git *before* the numbers exist, so a reviewer can check we didn't retrofit the
+git *before* the numbers exist, so anyone can check we didn't retrofit the
 success criteria to whatever the pipeline happened to produce. If a result
 contradicts a prediction here, the prediction stays and the contradiction is
 reported — that is the point of writing it down first.

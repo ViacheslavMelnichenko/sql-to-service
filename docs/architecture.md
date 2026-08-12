@@ -113,7 +113,7 @@ post-hoc script:
 - **`PreToolUse`** blocks writes outside allowed folders — the agent can't wander.
 
 The gate-tools themselves are **Bash scripts** (ADR-0005) — the same artifact the
-agent calls, the hook invokes, and a reviewer reads. `verify.sh` composes
+agent calls, the hook invokes, and a human reads. `verify.sh` composes
 build + unit + differential and reproduces the published results **with no model
 calls**, which is what makes the numbers auditable.
 

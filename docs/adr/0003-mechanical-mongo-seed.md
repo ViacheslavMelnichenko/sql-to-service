@@ -22,7 +22,7 @@ that the model converted correctly.
   no hand-fitting.
 - The derivation must be fixed and committed *before* any conversion, so it can't
   be adjusted to make a conversion pass.
-- It must be inspectable — a reviewer can read it and confirm it's mechanical.
+- It must be inspectable — anyone can read it and confirm it's mechanical.
 
 ## Considered options
 
