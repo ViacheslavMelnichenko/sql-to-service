@@ -19,14 +19,16 @@ This repository is that independent way. It is built **on Claude Code**, using i
 native primitives — subagents, skills, hooks, and tools — so the "AI engineering"
 here is real platform mechanism, not a wrapper script pretending to be an agent.
 
-> **Status:** design-complete, implementation in progress. Two kinds of number
+> **Status:** the gate and pipeline are built and reproducible today; the
+> pre-registered eval distribution is partway in (k=1 of k=3). Two kinds of number
 > live in this project, and the difference is the whole point:
 > - The **gate results** exist today and are reproducible at $0 with no model call
->   — two converted procs passing their differential (6/6 cases, incl. a
->   decimal-bearing proc), the mutation check catching 8/8 injected bugs across both
->   (incl. the `decimal→double` precision mutant), the oracle stable across 67 golden
->   files. Run `gates/verify.sh` + `gates/mutation-check.sh` and you regenerate them
->   yourself; the [walkthrough](https://viacheslavmelnichenko.github.io/sql-to-service/)
+>   — three converted procs passing their differential (10/10 cases, incl. a
+>   decimal-bearing proc and a two-arm temporal join), the mutation check catching
+>   12/12 injected bugs across all three (incl. the `decimal→double` precision mutant),
+>   the oracle stable across 67 golden files. Run `gates/verify.sh` +
+>   `gates/mutation-check.sh` and you regenerate them yourself; the
+>   [walkthrough](https://viacheslavmelnichenko.github.io/sql-to-service/)
 >   shows each one paired with its command.
 > - The **eval numbers** — corpus-wide accuracy, per-proc cost, the failure
 >   taxonomy — have **begun** to land: the Phase-4 harness (`evals/harness.py`) has
@@ -203,7 +205,10 @@ corpus/golden/<Proc>.json         →  the oracle, captured before the agent
 evals/results/run-*.json          →  the per-proc verdict and cost
 ```
 
-*(These paths are the target layout; they populate as the implementation lands.)*
+*(These paths are populated for the three converted procs today —
+`Website.SearchForCustomers`, `Integration.GetStockHoldingUpdates`,
+`Integration.GetTransactionUpdates`. The corpus carries the inputs and goldens for
+the rest of the selected tier; they convert as the harness runs.)*
 
 ---
 

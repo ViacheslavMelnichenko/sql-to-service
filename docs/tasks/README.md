@@ -197,14 +197,22 @@ loads, and one substantive conversion runs through all four stages by hand.
 > "always terminates," and it records a capped-out proc as an honest failure rather
 > than retrying until the number looks good.
 >
-> *The teeth* are proven, not asserted: `gates/mutation-check.sh` injects five
-> single-line bugs into the showcase service (drop-where, break-order,
-> shift-pagination, drop-join, type-coercion) and requires the differential to turn
-> red on **every** one. All 5 caught. The one honest scope note: the ADR-0006
-> `decimal(18,4)→float` mutant has no target in this proc (it returns no decimal
-> column), so `type-coercion` stands in for the wrong-numeric-representation class;
-> true precision-loss is exercised when a money-returning proc is converted. Stated
-> in the script header, not skipped silently.
+> *The teeth* are proven, not asserted: `gates/mutation-check.sh` injects single-line
+> bugs into each converted service and requires the differential to turn red on
+> **every** one. At Phase-3 exit that was five bugs into the showcase
+> (`SearchForCustomers`: drop-where, break-order, shift-pagination, drop-join,
+> type-coercion), all caught — with one honest scope note in the script header: the
+> ADR-0006 `decimal→double` precision mutant had no target in that proc (it returns
+> no decimal column), so `type-coercion` stood in for the wrong-numeric class.
+> **That gap is now closed:** as the decimal proc (`GetStockHoldingUpdates`) and the
+> two-arm temporal proc (`GetTransactionUpdates`) were converted, each got its own
+> catalogue, and the corpus-wide check now injects **12 bugs across three procs and
+> catches all 12** — including the real `decimal→double` precision-loss mutant,
+> anchored on the load-bearing `8.00` seed row. Two teeth are deliberately *not*
+> claimed, and the script says so rather than faking them: `GetStockHoldingUpdates`
+> has no join to break, and `GetTransactionUpdates`'s seed has no row where the
+> invoice and transaction CustomerID differ, so a break-join/coalesce mutant there
+> would be a no-op branch hole (ADR-0002) — omitted, not silently passed.
 
 **Phase-3 exit:** every transition is gated automatically in-loop, the
 differential has teeth (**proven** by the mandatory mutation check catching every
@@ -217,17 +225,36 @@ verdict with no model calls. **Met:** see "Phase 3 as built" above.
 
 | # | Task | Target file | Status | Fate |
 |---|------|-------------|--------|------|
-| 4.1 | Harness: run Claude Code headless per proc, collect cost | `evals/harness.py` | todo | becomes-impl |
-| 4.2 | Per-proc outcome record (verdict + retries + tokens + $) | `evals/results/run-001.json` | todo | becomes-impl |
-| 4.3 | k=3 runs; report distribution, flag `flaky` | `evals/results/run-002.json` | todo | becomes-impl |
-| 4.4 | Structured run trace (auditable after the fact) | `evals/results/run-*.trace.jsonl` | todo | becomes-impl |
+| 4.1 | Harness: run Claude Code headless per proc, collect cost | `evals/harness.py` | done | becomes-impl |
+| 4.2 | Per-proc outcome record (verdict + retries + tokens + $) | `evals/results/run-001.json` | done | becomes-impl |
+| 4.3 | k=3 runs; report distribution, flag `flaky` | `evals/results/run-001.sample-0N.json` + `aggregate.py` | wip | becomes-impl |
+| 4.4 | Structured run trace (auditable after the fact) | `evals/results/debug/*` (opt-in `EVAL_DEBUG`) | wip | becomes-impl |
 | 4.5 | Metric definitions (cost model, cache control, small-n honesty) | `evals/METHOD.md` | todo | permanent |
-| 4.6 | Summary: Table 1 (headline) + Table 2 (failure taxonomy) + analysis | `evals/results/summary.md` | todo | becomes-impl |
+| 4.6 | Summary: Table 1 (headline) + Table 2 (failure taxonomy) + analysis | `evals/results/summary.md` | done | becomes-impl |
 | 4.7 | Naive single-prompt baseline (the control) | `evals/results/baseline.json` | todo | becomes-impl |
+
+> **Phase 4 as built (k=1 of k=3).** The harness (`evals/harness.py`) is real and
+> runs two ways: `--dry-run` (no model, measures the committed artifacts — what CI
+> runs) and live (`claude -p` per proc, real API spend, opt-in behind
+> `EVAL_LIVE_OK`/`run.sh`). It enforces the retry cap of 2, and computes the
+> pre-registered `cleared_within_cap` as a mechanical SHA-256 identity between the
+> freshly-built service's canonical output and the frozen golden — not a judgment.
+> The first **live sample** is in: `run-001.sample-01.json` (three procs, each
+> cleared on the first attempt, $2.84–$4.39/proc), stitched into `run-001.json` by
+> `evals/aggregate.py`. That is **k=1 of the pre-registered k=3** (4.3 stays `wip`
+> until the two remaining samples run), and the 3/3 clean sweep is written up as a
+> finding to investigate under H3, not a headline (`evals/results/summary.md`).
+> Still open: the k=3 distribution (4.3), the metric doc (4.5), and the naive
+> single-prompt baseline/control (4.7 — the B.4 task). The cost reconciliation the
+> sample forced — the projected $0.70/attempt was ~5× low against the measured
+> ~$3.64/proc, because an agentic attempt re-bills 24–44 turns — is recorded in the
+> demo and `summary.md` rather than quietly corrected.
 
 **Phase-4 exit:** the numbers come from real headless agent runs, the failure
 taxonomy has an analysis paragraph (the one artifact that can't be faked), and
-`verify.sh` output matches the published table.
+`verify.sh` output matches the published table. **Partly met:** the harness and the
+first live sample are in (k=1); the k=3 distribution, `METHOD.md`, and the baseline
+control remain.
 
 ---
 
@@ -235,16 +262,29 @@ taxonomy has an analysis paragraph (the one artifact that can't be faked), and
 
 | # | Task | Target file | Status | Fate |
 |---|------|-------------|--------|------|
-| 5.1 | README: fill the Status → results, wire the 4-link read-without-running chain | `README.md` | wip | permanent |
-| 5.2 | CI `verify.yml` (free, no model) + green badge on line 1 | `.github/workflows/verify.yml` | todo | becomes-impl |
+| 5.1 | README: fill the Status → results, wire the 4-link read-without-running chain | `README.md` | done | permanent |
+| 5.2 | CI `verify.yml` (free, no model) + green badge on line 1 | `.github/workflows/verify.yml` | done | becomes-impl |
 | 5.3 | CI `regenerate.yml` (paid, opt-in) | `.github/workflows/regenerate.yml` | todo | becomes-impl |
-| 5.4 | `SECURITY.md`: supply-chain (.bak SHA), secret handling | `docs/SECURITY.md` | todo | permanent |
+| 5.4 | `SECURITY.md`: supply-chain (.bak SHA), secret handling | `docs/SECURITY.md` | done | permanent |
 | 5.5 | `CHANGELOG.md` | `CHANGELOG.md` | todo | permanent |
 | 5.6 | Repo public + pinned on profile *(manual)* | — | todo | delete |
 
+> **Phase 5 as built (the honesty layer, mostly in).** The README carries the
+> Status block reconciled to what actually runs (three converted procs, 10/10
+> differential cases, 12/12 mutants, k=1 of k=3), the four-link
+> read-without-running chain, and the applicability-ceiling and demo-vs-reality
+> firewall. CI (`.github/workflows/verify.yml`) runs the same `make`-free gate on
+> every push — `docker compose up`, `gates/verify.sh`, `gates/mutation-check.sh`,
+> and `harness.py --dry-run` — with **no model call**, so the line-1 badge is
+> GitHub vouching for the free, deterministic half. `docs/SECURITY.md` states the
+> secret-handling, PII-synthesis prerequisite, and supply-chain pinning. Still
+> open, deliberately: the paid `regenerate.yml` (5.3), `CHANGELOG.md` (5.5), and
+> the manual "make the repo public" step (5.6).
+
 **Phase-5 exit:** a reviewer landing cold gets the verdict in 90 seconds, can
 follow one conversion end to end without running anything, and sees a green badge
-that GitHub — not the author — vouches for.
+that GitHub — not the author — vouches for. **Met for the parts that ship in the
+repo;** the paid regenerate workflow, changelog, and go-public step remain.
 
 ---
 

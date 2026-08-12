@@ -36,13 +36,18 @@ Each ADR is one frozen decision the pipeline depends on. They are permanent.
 | --- | --- |
 | [`../pipeline/retry.md`](../pipeline/retry.md) | The loop's error path: how a gate failure is fed back to the agent (in-loop hooks) and where the retry cap lives (the harness, Phase 4). |
 
-## Measurement (Phase 4 — in progress)
+## Measurement (Phase 4 — k=1 of k=3 in)
+
+The harness is built and has produced its first live sample; the pre-registered
+distribution completes at k=3. The result records below are real, and scoped to
+that k=1 wherever they are cited.
 
 | Document | What it covers |
 | --- | --- |
-| [`../evals/PREREGISTRATION.md`](../evals/PREREGISTRATION.md) | The measurement method, registered *before* the numbers exist, so the results are falsifiable. The harness (`evals/harness.py`) and its result records land against this spec. |
+| [`../evals/PREREGISTRATION.md`](../evals/PREREGISTRATION.md) | The measurement method, registered *before* the numbers exist, so the results are falsifiable. The harness (`evals/harness.py`) and its result records are written against this spec. |
 | [`../evals/RUNNING.md`](../evals/RUNNING.md) | The operational runbook: how to run the harness (dry vs live, POSIX vs Windows), the prerequisites, the authentication traps, and how to diagnose a failing live run. |
 | [`../evals/results/README.md`](../evals/results/README.md) | How to read a result file honestly — what `mode`, `cleared_within_cap`, and the SHA identity mean. |
+| [`../evals/results/run-001.json`](../evals/results/run-001.json) + [`summary.md`](../evals/results/summary.md) | The first live run: three procs converted end to end by the real agent, each cleared against the frozen golden ($2.84–$4.39/proc). Aggregated from `run-001.sample-01.json` by `evals/aggregate.py`; k=1 of the pre-registered k=3, and the 3/3 clean sweep is treated as a finding to investigate (H3), not a headline. |
 
 ## Build scaffolding (temporary)
 

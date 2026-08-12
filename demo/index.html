@@ -774,9 +774,10 @@ exit=<b>2</b>
         <p class="sec-eyebrow">Try it</p>
         <h3 class="sec-title">Break the service on purpose, five ways</h3>
         <div class="card do"><h4><span class="pill">DO</span> Run the mutation check</h4>
-<pre>bash gates/mutation-check.sh
-<span class="c"># injects 5 one-line bugs into the service, one at a time,</span>
-<span class="c"># and requires the differential to turn RED on each</span></pre></div>
+<pre>bash gates/mutation-check.sh Website.SearchForCustomers
+<span class="c"># injects 5 one-line bugs into this service, one at a time,</span>
+<span class="c"># and requires the differential to turn RED on each.</span>
+<span class="c"># The bare command runs every converted proc: 12 mutants across 3.</span></pre></div>
         <div class="card check"><h4><span class="pill">CHECK</span> Every mutant caught <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--good)">— real local run, 2026-08-10</span></h4>
 <pre><span class="g">[mutation] PASS:</span> baseline green — the gate agrees the <b>unmutated</b> service is correct
 <span class="c">[mutation] injecting 5 mutations; each must turn the differential red</span>
@@ -791,8 +792,8 @@ exit=<b>2</b>
       <section class="sec">
         <p class="sec-eyebrow">Reading the output</p>
         <h3 class="sec-title">The baseline line is the one that matters</h3>
-        <p>Each mutant is a realistic one-line mistake: dropping a <code>WHERE</code> clause, breaking the sort order, shifting the pagination by one, dropping a join, coercing a type. Each is injected on its own and must turn the differential red — and all five do.</p>
-        <p>But the first line — <strong>baseline green</strong> — is what makes the other five meaningful. It confirms the gate passes the <em>un</em>mutated service, so the gate isn't just stuck on "red" for everything. A gate that fails on bugs <em>and</em> passes on correct code is a gate that actually discriminates. The whole cycle was captured in <strong>~2m10s</strong>.</p>
+        <p>Each mutant is a realistic one-line mistake: dropping a <code>WHERE</code> clause, breaking the sort order, shifting the pagination by one, dropping a join, coercing a type. Each is injected on its own and must turn the differential red — and all five do. The other two converted procs carry their own catalogues (the decimal proc adds the real <code>decimal→double</code> precision mutant; the temporal proc adds drop-window and drop-arm), so the bare command proves <strong>12 mutants across 3 procs</strong>, all caught.</p>
+        <p>But the first line — <strong>baseline green</strong> — is what makes the other five meaningful. It confirms the gate passes the <em>un</em>mutated service, so the gate isn't just stuck on "red" for everything. A gate that fails on bugs <em>and</em> passes on correct code is a gate that actually discriminates. The whole corpus-wide cycle was captured in <strong>~2m16s</strong>.</p>
       </section>
 
       <section class="sec">
@@ -906,12 +907,12 @@ cleared 3   ·   failed:differential 0   ·   flaky 0   ·   failed:retry_cap 0<
       <section class="sec">
         <p class="sec-eyebrow">Measured — the free audit</p>
         <h3 class="sec-title">Real local runs, 2026-08-10, zero model calls</h3>
-        <p>These four are <em>facts</em>, captured from the runs shown on the earlier slides. Nothing here is an estimate. <strong>Scope:</strong> the two correctness tiles cover the <em>two converted procs</em> (<code>Website.SearchForCustomers</code> and the decimal-bearing <code>Integration.GetStockHoldingUpdates</code>) — not a corpus-wide rate; the oracle-stability tile spans all 67 golden files across the 14 procs.</p>
+        <p>These four are <em>facts</em>, captured from the runs shown on the earlier slides. Nothing here is an estimate. <strong>Scope:</strong> the two correctness tiles cover the <em>three converted procs</em> (<code>Website.SearchForCustomers</code>, the decimal-bearing <code>Integration.GetStockHoldingUpdates</code>, and the two-arm temporal <code>Integration.GetTransactionUpdates</code>) — not a corpus-wide rate; the oracle-stability tile spans all 67 golden files across the 14 procs.</p>
         <div class="econ">
-          <div class="metric"><span class="lbl">Correctness <span class="scope">2 procs</span></span><span class="val">6/6</span><span class="sub"><code>differential</code> vs frozen golden — every case identical after canonicalise (5 + 1). 8/8 unit green.</span></div>
-          <div class="metric"><span class="lbl">Gate has teeth <span class="scope">2 procs</span></span><span class="val">8/8</span><span class="sub">Injected one-line bugs all forced the differential red — incl. the <code>decimal→double</code> precision mutant; pristine baselines stayed green.</span></div>
+          <div class="metric"><span class="lbl">Correctness <span class="scope">3 procs</span></span><span class="val">10/10</span><span class="sub"><code>differential</code> vs frozen golden — every case identical after canonicalise (5 + 1 + 4). 36/36 unit green.</span></div>
+          <div class="metric"><span class="lbl">Gate has teeth <span class="scope">3 procs</span></span><span class="val">12/12</span><span class="sub">Injected one-line bugs all forced the differential red — incl. the <code>decimal→double</code> precision mutant; pristine baselines stayed green.</span></div>
           <div class="metric"><span class="lbl">Oracle stable <span class="scope">14 procs</span></span><span class="val">67/67</span><span class="sub">Golden files byte-identical across two independent captures — deterministic seed.</span></div>
-          <div class="metric"><span class="lbl">Audit cost</span><span class="val">$0.00</span><span class="sub">verify ~67s + mutation ~3m14s. Zero tokens: the whole audit runs with no model.</span></div>
+          <div class="metric"><span class="lbl">Audit cost</span><span class="val">$0.00</span><span class="sub">verify ~57s + mutation ~2m16s. Zero tokens: the whole audit runs with no model.</span></div>
         </div>
       </section>
 
@@ -959,7 +960,7 @@ cleared 3   ·   failed:differential 0   ·   flaky 0   ·   failed:retry_cap 0<
           <tr><td class="p">3 · agents</td><td>Four subagents + four skills, separated context — <code>.claude/</code> (ADR-0004)</td></tr>
           <tr><td class="p">4 · gates</td><td><code>verify.sh</code> reproduces the verdict, no model — <code>gates/</code> (ADR-0005)</td></tr>
           <tr><td class="p">5 · hooks</td><td>Every transition gated in-loop — <code>.claude/settings.json</code></td></tr>
-          <tr><td class="p">6 · teeth</td><td>8/8 mutants caught across 2 procs — <code>gates/mutation-check.sh</code> (ADR-0006)</td></tr>
+          <tr><td class="p">6 · teeth</td><td>12/12 mutants caught across 3 procs — <code>gates/mutation-check.sh</code> (ADR-0006)</td></tr>
           <tr><td class="p">7 · retry</td><td>Failures fed back, cap 2 — <code>pipeline/retry.md</code></td></tr>
           <tr><td class="p">8 · measure</td><td>Real headless runs, cost + failures — <code>evals/</code> (first live sample in, k=1 of k=3)</td></tr>
         </table>
@@ -1442,9 +1443,10 @@ exit=<b>2</b>
         <p class="sec-eyebrow">Спробуйте</p>
         <h3 class="sec-title">Зламати сервіс навмисно, пʼятьма способами</h3>
         <div class="card do"><h4><span class="pill">DO</span> Запустити mutation-check</h4>
-<pre>bash gates/mutation-check.sh
-<span class="c"># впорскує 5 однорядкових багів у сервіс, по одному за раз,</span>
-<span class="c"># і вимагає, щоб differential ставав ЧЕРВОНИМ на кожному</span></pre></div>
+<pre>bash gates/mutation-check.sh Website.SearchForCustomers
+<span class="c"># впорскує 5 однорядкових багів у цей сервіс, по одному за раз,</span>
+<span class="c"># і вимагає, щоб differential ставав ЧЕРВОНИМ на кожному.</span>
+<span class="c"># Гола команда проганяє всі сконвертовані процедури: 12 мутантів на 3.</span></pre></div>
         <div class="card check"><h4><span class="pill">CHECK</span> Кожен мутант спійманий <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--good)">— реальний локальний запуск, 2026-08-10</span></h4>
 <pre><span class="g">[mutation] PASS:</span> baseline green — the gate agrees the <b>unmutated</b> service is correct
 <span class="c">[mutation] injecting 5 mutations; each must turn the differential red</span>
@@ -1459,8 +1461,8 @@ exit=<b>2</b>
       <section class="sec">
         <p class="sec-eyebrow">Читаємо вивід</p>
         <h3 class="sec-title">Рядок baseline — саме той, що важить</h3>
-        <p>Кожен мутант — це реалістична однорядкова помилка: викинути <code>WHERE</code>, зламати порядок сортування, зсунути пагінацію на одиницю, викинути джойн, привести тип. Кожен впорскується окремо й мусить зробити differential червоним — і всі пʼять роблять.</p>
-        <p>Але перший рядок — <strong>baseline green</strong> — це те, що робить решту пʼять значущими. Він підтверджує, що перевірка проходить <em>не</em>мутований сервіс, тож перевірка не просто застрягла на «червоно» для всього. Перевірка, що провалюється на багах <em>і</em> проходить на правильному коді, — це перевірка, яка справді розрізняє. Увесь цикл захоплено за <strong>~2m10s</strong>.</p>
+        <p>Кожен мутант — це реалістична однорядкова помилка: викинути <code>WHERE</code>, зламати порядок сортування, зсунути пагінацію на одиницю, викинути джойн, привести тип. Кожен впорскується окремо й мусить зробити differential червоним — і всі пʼять роблять. Дві інші сконвертовані процедури мають власні каталоги (грошова додає реальний мутант точності <code>decimal→double</code>; темпоральна — drop-window і drop-arm), тож гола команда доводить <strong>12 мутантів на 3 процедурах</strong>, усі спіймані.</p>
+        <p>Але перший рядок — <strong>baseline green</strong> — це те, що робить решту пʼять значущими. Він підтверджує, що перевірка проходить <em>не</em>мутований сервіс, тож перевірка не просто застрягла на «червоно» для всього. Перевірка, що провалюється на багах <em>і</em> проходить на правильному коді, — це перевірка, яка справді розрізняє. Увесь корпусний цикл захоплено за <strong>~2m16s</strong>.</p>
       </section>
 
       <section class="sec">
@@ -1574,13 +1576,13 @@ cleared 3   ·   failed:differential 0   ·   flaky 0   ·   failed:retry_cap 0<
       <section class="sec">
         <p class="sec-eyebrow">Виміряно — безкоштовний аудит</p>
         <h3 class="sec-title">Реальні локальні запуски, 2026-08-10, нуль викликів моделі</h3>
-        <p><strong>Обсяг:</strong> дві плитки правильності — це <em>дві сконвертовані процедури</em> (<code>Website.SearchForCustomers</code> і грошова <code>Integration.GetStockHoldingUpdates</code>), а не показник по всьому корпусу; плитка стабільності оракула охоплює всі 67 golden-файлів по 14 процедурах.</p>
+        <p><strong>Обсяг:</strong> дві плитки правильності — це <em>три сконвертовані процедури</em> (<code>Website.SearchForCustomers</code>, грошова <code>Integration.GetStockHoldingUpdates</code> і дворукавна темпоральна <code>Integration.GetTransactionUpdates</code>), а не показник по всьому корпусу; плитка стабільності оракула охоплює всі 67 golden-файлів по 14 процедурах.</p>
         <p>Ці чотири — <em>факти</em>, захоплені із запусків, показаних на попередніх слайдах. Ніщо тут не є оцінкою.</p>
         <div class="econ">
-          <div class="metric"><span class="lbl">Правильність <span class="scope">2 проц.</span></span><span class="val">6/6</span><span class="sub"><code>differential</code> проти замороженого golden — кожен кейс ідентичний після canonicalise (5 + 1). 8/8 unit зелені.</span></div>
-          <div class="metric"><span class="lbl">Перевірка з зубами <span class="scope">2 проц.</span></span><span class="val">8/8</span><span class="sub">Впорснуті однорядкові баги всі зробили differential червоним — зокрема мутант точності <code>decimal→double</code>; незаплямовані baseline лишилися зеленими.</span></div>
+          <div class="metric"><span class="lbl">Правильність <span class="scope">3 проц.</span></span><span class="val">10/10</span><span class="sub"><code>differential</code> проти замороженого golden — кожен кейс ідентичний після canonicalise (5 + 1 + 4). 36/36 unit зелені.</span></div>
+          <div class="metric"><span class="lbl">Перевірка з зубами <span class="scope">3 проц.</span></span><span class="val">12/12</span><span class="sub">Впорснуті однорядкові баги всі зробили differential червоним — зокрема мутант точності <code>decimal→double</code>; незаплямовані baseline лишилися зеленими.</span></div>
           <div class="metric"><span class="lbl">Оракул стабільний <span class="scope">14 проц.</span></span><span class="val">67/67</span><span class="sub">Golden-файли побайтно ідентичні у двох незалежних захопленнях — детермінований seed.</span></div>
-          <div class="metric"><span class="lbl">Вартість аудиту</span><span class="val">$0.00</span><span class="sub">verify ~67s + mutation ~3m14s. Нуль токенів: увесь аудит працює без моделі.</span></div>
+          <div class="metric"><span class="lbl">Вартість аудиту</span><span class="val">$0.00</span><span class="sub">verify ~57s + mutation ~2m16s. Нуль токенів: увесь аудит працює без моделі.</span></div>
         </div>
       </section>
 
@@ -1628,7 +1630,7 @@ cleared 3   ·   failed:differential 0   ·   flaky 0   ·   failed:retry_cap 0<
           <tr><td class="p">3 · агенти</td><td>Чотири субагенти + чотири скіли, розділений контекст — <code>.claude/</code> (ADR-0004)</td></tr>
           <tr><td class="p">4 · gates</td><td><code>verify.sh</code> відтворює вердикт, без моделі — <code>gates/</code> (ADR-0005)</td></tr>
           <tr><td class="p">5 · хуки</td><td>Кожен перехід перевіряється в циклі — <code>.claude/settings.json</code></td></tr>
-          <tr><td class="p">6 · зуби</td><td>8/8 мутантів спіймано на 2 процедурах — <code>gates/mutation-check.sh</code> (ADR-0006)</td></tr>
+          <tr><td class="p">6 · зуби</td><td>12/12 мутантів спіймано на 3 процедурах — <code>gates/mutation-check.sh</code> (ADR-0006)</td></tr>
           <tr><td class="p">7 · повтори</td><td>Провали повертаються, ліміт 2 — <code>pipeline/retry.md</code></td></tr>
           <tr><td class="p">8 · вимір</td><td>Реальні headless-запуски, вартість + провали — <code>evals/</code> (перший живий семпл є, k=1 із k=3)</td></tr>
         </table>
