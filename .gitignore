@@ -29,8 +29,6 @@ evals/results/dry-run.json
 # for diagnosing a failing run. Local scratch, may contain paths — never committed.
 evals/results/debug/
 
-# Ukrainian working copies — every *.uk.md is a private translation, never committed
-*.uk.md
 
 # OS / editor
 .DS_Store
