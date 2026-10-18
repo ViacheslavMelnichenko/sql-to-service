@@ -165,3 +165,4 @@ differential і відтворює опубліковані результати
 | [0004](adr/0004-claude-code-substrate.md) | Побудовано на Claude Code — справжні agents/skills/hooks/tools |
 | [0005](adr/0005-tools-bash-then-mcp.md) | Bash гейт-тули зараз, MCP як stretch |
 | [0006](adr/0006-mutation-validation.md) | Обов'язкова мутаційна перевірка доводить, що гейт має зуби |
+| [0008](adr/0008-ast-feature-grounding.md) | Детерміновані AST-картки фіч — лише обсервабельність, доведено без влади над вердиктом |
