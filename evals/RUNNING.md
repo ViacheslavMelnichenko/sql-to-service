@@ -139,6 +139,15 @@ the k samples is an **expected, honest** outcome (PREREGISTRATION.md, H3) — a 
 sweep across all three is a finding to investigate, not a success, and
 `summary.md` is where that investigation is written down.
 
+Each proc also carries finer-grained economics: a `per_attempt` array (each
+retry's own `input`/`output` tokens, `cost_usd`, `num_turns`, and a
+`wall_seconds` split of `claude` vs `gate` time) and a `stage_breakdown` — a
+best-effort per-subagent-stage (analyst/implementer/test-author/reviewer) token
+attribution parsed from the stream transcript. The stage breakdown reports
+`available: false` with a `reason` when the transcript lacks the linkage, so a
+missing split is never faked. `aggregate.py` rolls both up across the k samples
+(`wall_seconds` distribution and a collapsed `stage_breakdown`).
+
 ---
 
 ## Authentication (why the Windows path is fussy)

@@ -6,9 +6,9 @@ rather than a point**. The harness (harness.py) produces ONE independent sample 
 invocation — a full, from-scratch conversion of the run set driven by the real
 agent. This script stitches the samples together into the pre-registered
 distribution: per proc, `cleared/k`, whether it is `flaky` (differs across the k
-runs), and the spread of cost/tokens/retries. It computes nothing the samples don't
-already contain — it is pure aggregation, so anyone can recompute run-001.json
-from the committed sample files and get the same bytes.
+runs), and the spread of cost/tokens/retries/wall-time. It computes nothing the
+samples don't already contain — it is pure aggregation, so anyone can recompute
+run-001.json from the committed sample files and get the same bytes.
 
 Why sample-then-aggregate, and not a --k loop inside the harness:
   * Each sample is a separately-authorised, separately-priced live run. Splitting
@@ -74,6 +74,47 @@ def by_proc(samples):
     return order, procs
 
 
+def _agg_stage_breakdown(breakdowns):
+    """Collapse the per-sample best-effort stage_breakdown into one distribution.
+    Available iff at least one sample carried a transcript breakdown; otherwise the
+    reason is surfaced so the aggregate says WHY there is no per-stage split rather
+    than pretending there is one (mirrors the harness's honest degradation)."""
+    avail = [b for b in breakdowns if b and b.get("available")]
+    if not avail:
+        reasons = [b.get("reason") for b in breakdowns if b and not b.get("available")]
+        return {"available": False,
+                "samples_with_breakdown": 0,
+                "reason": (reasons[0] if reasons
+                           else "no sample carried a per-stage breakdown")}
+    stage_tok = {}   # stage -> {"input": [...], "output": [...], "messages": [...]}
+    order = []
+    for b in avail:
+        for st in b.get("stages", []):
+            name = st["stage"]
+            slot = stage_tok.setdefault(name, {"input": [], "output": [], "messages": []})
+            slot["input"].append(int(st.get("input_tokens", 0) or 0))
+            slot["output"].append(int(st.get("output_tokens", 0) or 0))
+            slot["messages"].append(int(st.get("messages", 0) or 0))
+            if name not in order:
+                order.append(name)
+    stages = []
+    for name in order:
+        s = stage_tok[name]
+        stages.append({
+            "stage": name,
+            "input_tokens": s["input"],
+            "output_tokens": s["output"],
+            "output_tokens_mean": round(statistics.mean(s["output"]), 1) if s["output"] else 0.0,
+            "messages": s["messages"],
+        })
+    return {
+        "available": True,
+        "samples_with_breakdown": len(avail),
+        "stages": stages,
+        "note": "per-stage tokens across the samples that carried a transcript breakdown",
+    }
+
+
 def aggregate_proc(proc, records):
     """Collapse a proc's k sample records into one distribution record."""
     outcomes = [r["outcome"] for _, r in records]
@@ -99,7 +140,10 @@ def aggregate_proc(proc, records):
 
     costs = [float(r.get("cost_usd") or 0) for _, r in records]
     out_tokens = [int((r.get("tokens") or {}).get("output") or 0) for _, r in records]
+    in_tokens = [int((r.get("tokens") or {}).get("input") or 0) for _, r in records]
     retries = [r.get("retries") for _, r in records]
+    walls = [float(r.get("wall_seconds") or 0) for _, r in records]
+    stage_breakdown = _agg_stage_breakdown([r.get("stage_breakdown") for _, r in records])
 
     return {
         "proc": proc,
@@ -121,7 +165,14 @@ def aggregate_proc(proc, records):
             "total": round(sum(costs), 6),
         },
         "output_tokens": out_tokens,
+        "input_tokens": in_tokens,
         "num_turns": turns,
+        "wall_seconds": {
+            "per_sample": [round(w, 1) for w in walls],
+            "mean": round(statistics.mean(walls), 1) if walls else 0.0,
+            "total": round(sum(walls), 1),
+        },
+        "stage_breakdown": stage_breakdown,
         "source_sha256_per_sample": [r.get("source_sha256") for _, r in records],
     }
 
@@ -165,6 +216,7 @@ def main():
     non_independent = [pp["proc"] for pp in per_proc if not pp["independent"]]
     all_cleared = cleared_runs == proc_runs and proc_runs > 0
     total_cost = round(sum(pp["cost_usd"]["total"] for pp in per_proc), 6)
+    total_wall = round(sum(pp["wall_seconds"]["total"] for pp in per_proc), 1)
 
     payload = {
         "run_id": args.run_id,
@@ -183,6 +235,7 @@ def main():
         "non_independent_procs": non_independent,
         "clean_sweep": all_cleared and not non_independent,
         "cost_usd_total": total_cost,
+        "wall_seconds_total": total_wall,
         "per_proc": per_proc,
         "note": (
             "Aggregated from the committed per-sample live runs; recompute with "

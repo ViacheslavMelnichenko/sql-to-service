@@ -11,6 +11,16 @@
             "statusMessage": "guard-path: writes must land under generated/"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-path.sh\"",
+            "statusMessage": "guard-path: Bash must not write outside generated/"
+          }
+        ]
       }
     ],
     "PostToolUse": [

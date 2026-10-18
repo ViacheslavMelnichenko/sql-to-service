@@ -19,6 +19,20 @@ What it does, for each proc in the run set:
   4. Records per-proc: outcome, attempts/retries, model+snapshot, tokens, cost,
      wall time, and both SHA-256 hashes — and writes it to evals/results/<run>.json.
 
+Metric granularity (why it is shaped this way):
+  * PER PROC: tokens, CLI-reported cost, turns, and wall time — the headline.
+  * PER ATTEMPT: the same four, split out so a retry's cost is not hidden inside a
+    running total (`per_attempt`), each with its own claude-vs-gate wall split.
+  * PER SUBAGENT STAGE: BEST-EFFORT. The whole four-stage pipeline runs inside ONE
+    headless `claude -p` session that dispatches the subagents via the Task tool, so
+    the CLI's own tally is a single lump for the session. The only place a per-stage
+    split can come from is the transcript — a subagent's messages carry a
+    `parent_tool_use_id` pointing back at the Task call that spawned them. We read
+    the stream (`--output-format stream-json`) and attribute by that id. When the
+    stream carries no such linkage we record `stage_breakdown.available = false` with
+    a reason rather than fabricate a split we could not observe (the same honest-
+    degradation rule the feature extractor follows, ADR-0008).
+
 Two modes:
   * --dry-run  : NO model, NO API spend. Treats the ALREADY-COMMITTED services as
                  "what the run produced" and exercises every deterministic part of
@@ -221,76 +235,31 @@ def run_gates(proc):
 
 
 # --------------------------------------------------------------------------------
-# Live conversion — drives the real agent. Bounded by the retry cap.
+# Claude output parsing — totals (authoritative) + best-effort per-stage split
 # --------------------------------------------------------------------------------
 
-def convert_live(proc):
-    """Drive `claude -p` through the pipeline for ONE proc, up to RETRY_CAP retries.
+def _meta_from_result(obj):
+    """Shared decoder for a terminal result object — the `{"type":"result"}` stream
+    event, or the single object `--output-format json` prints. These are the CLI's
+    OWN final tallies for the session (authoritative), plus the dated snapshot.
 
-    Returns a dict with attempts, retries, model snapshot, token/cost totals, and
-    the last gate output. The Stop hook (stop-differential.sh, made proc-aware via
-    CONVERT_PROC) blocks an early finish inside each session; THIS loop is the hard
-    across-attempts cap that guarantees termination (pipeline/retry.md)."""
-    prompt = build_conversion_prompt(proc)
-    # CONVERT_PROC makes the Stop hook proc-aware. CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=0
-    # is load-bearing: with it left at 1 (the interactive default here), the child
-    # `claude` FORCES permission-mode back to default and ignores --permission-mode
-    # acceptEdits, so the headless agent can never write a file and every attempt
-    # ends with 0 turns. Turning the scrub OFF for this child restores acceptEdits;
-    # the Foundry key is already present in this shell (we run outside a Claude Code
-    # session, per run-live.ps1), so auth is unaffected.
-    env = dict(os.environ, CONVERT_PROC=proc, CLAUDE_CODE_SUBPROCESS_ENV_SCRUB="0")
-
-    totals = {"input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "num_turns": 0}
-    snapshot = None
-    session_id = None
-    last_gate = ""
-    attempt = 0
-
-    while attempt <= RETRY_CAP:
-        attempt += 1
-        cmd = [
-            "claude", "-p",
-            "--output-format", "json",
-            "--model", MODEL,
-            "--permission-mode", "acceptEdits",
-            "--allowedTools", "Read,Grep,Glob,Write,Edit,Bash,Task,Skill",
-        ]
-        if session_id:
-            # Resume with the gate's feedback as the correction (the across-attempts
-            # half of the retry protocol) rather than starting cold.
-            cmd += ["--resume", session_id]
-            turn_prompt = retry_prompt(proc, last_gate)
-        else:
-            turn_prompt = prompt
-
-        # Feed the prompt over STDIN, not as a positional arg. Through the Windows
-        # `claude.cmd` shim a long trailing argument is dropped and the CLI aborts
-        # with "Input must be provided either through stdin or as a prompt argument"
-        # (0 turns, ~3s) — exactly the empty attempts run-001 recorded. --print reads
-        # stdin when no prompt arg is given, so this is the portable path.
-        rc, raw = sh(cmd, env=env, timeout=1800, stdin_text=turn_prompt)
-        _debug_dump(proc, attempt, "claude", f"rc={rc}\n\n{raw}")
-        meta = parse_claude_json(raw)
-        if meta:
-            session_id = meta.get("session_id", session_id)
-            snapshot = snapshot or meta.get("model_snapshot")
-            u = meta.get("usage", {})
-            totals["input_tokens"] += int(u.get("input_tokens", 0) or 0)
-            totals["output_tokens"] += int(u.get("output_tokens", 0) or 0)
-            totals["cost_usd"] += float(meta.get("total_cost_usd", 0) or 0)
-            totals["num_turns"] += int(meta.get("num_turns", 0) or 0)
-
-        outcome, last_gate = run_gates(proc)
-        _debug_dump(proc, attempt, "gate", f"outcome={outcome}\n\n{last_gate}")
-        if outcome == "cleared":
-            return {"attempts": attempt, "retries": attempt - 1, "snapshot": snapshot,
-                    "totals": totals, "gate_outcome": outcome, "last_gate": last_gate}
-
-    # Cap exhausted: record the failure honestly with its last gate outcome.
-    return {"attempts": attempt, "retries": attempt - 1, "snapshot": snapshot,
-            "totals": totals, "gate_outcome": outcome, "last_gate": last_gate,
-            "note": "retry cap exhausted"}
+    `model` is usually null on this gateway; the real pin is
+    modelUsage[<key>].canonicalModel (e.g. "claude-opus-4-8"), captured here so
+    PREREGISTRATION's snapshot is recorded from the run, not chosen after. Falls back
+    to the modelUsage key itself."""
+    model_snapshot = None
+    mu = obj.get("modelUsage") or {}
+    if isinstance(mu, dict) and mu:
+        first_key = next(iter(mu.keys()))
+        entry = mu.get(first_key) or {}
+        model_snapshot = (entry.get("canonicalModel") if isinstance(entry, dict) else None) or first_key
+    return {
+        "session_id": obj.get("session_id"),
+        "total_cost_usd": obj.get("total_cost_usd"),
+        "usage": obj.get("usage") or {},
+        "num_turns": obj.get("num_turns"),
+        "model_snapshot": obj.get("model") or model_snapshot,
+    }
 
 
 def parse_claude_json(raw):
@@ -308,23 +277,255 @@ def parse_claude_json(raw):
         obj, _ = json.JSONDecoder().raw_decode(raw[start:])
     except json.JSONDecodeError:
         return None
-    # The dated snapshot the run actually hit. `model` is usually null on this
-    # gateway; the real pin is modelUsage[<key>].canonicalModel (e.g.
-    # "claude-opus-4-8"), captured here so PREREGISTRATION's snapshot is recorded
-    # from the run, not chosen after. Fall back to the modelUsage key itself.
-    model_snapshot = None
-    mu = obj.get("modelUsage") or {}
-    if isinstance(mu, dict) and mu:
-        first_key = next(iter(mu.keys()))
-        entry = mu.get(first_key) or {}
-        model_snapshot = (entry.get("canonicalModel") if isinstance(entry, dict) else None) or first_key
+    return _meta_from_result(obj)
+
+
+def _usage_tokens(usage):
+    usage = usage or {}
+    return (int(usage.get("input_tokens", 0) or 0),
+            int(usage.get("output_tokens", 0) or 0))
+
+
+def parse_claude_stream(raw):
+    """Parse `claude -p --output-format stream-json --verbose` output into
+    (meta, breakdown).
+
+      meta      — the authoritative per-session tally, decoded from the terminal
+                  {"type":"result"} event via _meta_from_result (the SAME numbers the
+                  old --output-format json gave). If no result event is present we
+                  fall back to parse_claude_json(raw), so a plain-json blob still
+                  works and the top-line accounting never silently zeroes.
+      breakdown — best-effort PER-SUBAGENT token attribution:
+                    {"available": True, "stages": [{"stage","input_tokens",
+                     "output_tokens","messages"}, ...]}
+                  or, when the stream carries no linkage to attribute by,
+                    {"available": False, "reason": "..."}
+                  We NEVER fabricate a per-stage number we could not observe.
+
+    Attribution: a Task tool_use block names its subagent_type and has an id; every
+    later assistant message whose parent_tool_use_id == that id is that subagent's
+    work. Messages with parent_tool_use_id == null are the orchestrator's own turns.
+    """
+    events = []
+    for line in raw.replace("\r\n", "\n").splitlines():
+        line = line.strip()
+        if not line or line[0] != "{":
+            continue
+        try:
+            events.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+
+    # Totals from the terminal result event (fall back to a whole-blob json parse).
+    meta = None
+    for ev in reversed(events):
+        if ev.get("type") == "result":
+            meta = _meta_from_result(ev)
+            break
+    if meta is None:
+        meta = parse_claude_json(raw)
+
+    # Map each Task tool_use id -> subagent_type, in dispatch order.
+    task_stage = {}
+    stage_order = []
+    for ev in events:
+        if ev.get("type") != "assistant":
+            continue
+        for block in (((ev.get("message") or {}).get("content")) or []):
+            if (isinstance(block, dict) and block.get("type") == "tool_use"
+                    and block.get("name") == "Task"):
+                tid = block.get("id")
+                stage = ((block.get("input") or {}).get("subagent_type")) or "subagent"
+                if tid:
+                    task_stage[tid] = stage
+                    if stage not in stage_order:
+                        stage_order.append(stage)
+
+    # Attribute every assistant message's usage to its owning stage.
+    acc = {}                 # stage -> [input_tokens, output_tokens, messages]
+    attributed_child = False
+    for ev in events:
+        if ev.get("type") != "assistant":
+            continue
+        in_t, out_t = _usage_tokens((ev.get("message") or {}).get("usage"))
+        parent = ev.get("parent_tool_use_id")
+        if parent and parent in task_stage:
+            stage = task_stage[parent]
+            attributed_child = True
+        elif parent is None:
+            stage = "orchestrator"
+        else:
+            stage = "unknown"
+        slot = acc.setdefault(stage, [0, 0, 0])
+        slot[0] += in_t
+        slot[1] += out_t
+        slot[2] += 1
+
+    if not task_stage or not attributed_child:
+        reason = ("stream carried no subagent (Task) linkage to attribute tokens by "
+                  "— the CLI stream may predate parent_tool_use_id, or the run used "
+                  "no subagents")
+        return meta, {"available": False, "reason": reason}
+
+    ordered = ["orchestrator"] + stage_order
+    ordered += [s for s in acc if s not in ordered]
+    stages = [{"stage": s,
+               "input_tokens": acc[s][0],
+               "output_tokens": acc[s][1],
+               "messages": acc[s][2]}
+              for s in ordered if s in acc]
+    return meta, {"available": True, "stages": stages}
+
+
+def _merge_breakdowns(breakdowns):
+    """Sum per-stage attribution across a proc's attempts. Available iff at least one
+    attempt produced a breakdown; otherwise the first unavailable reason is kept so
+    the result says WHY there is no split, never pretends there is one."""
+    stage_acc = {}
+    order = []
+    any_available = False
+    reason = None
+    for b in breakdowns:
+        if not b:
+            continue
+        if not b.get("available"):
+            reason = reason or b.get("reason")
+            continue
+        any_available = True
+        for st in b.get("stages", []):
+            name = st["stage"]
+            slot = stage_acc.setdefault(name, [0, 0, 0])
+            slot[0] += int(st.get("input_tokens", 0) or 0)
+            slot[1] += int(st.get("output_tokens", 0) or 0)
+            slot[2] += int(st.get("messages", 0) or 0)
+            if name not in order:
+                order.append(name)
+    if not any_available:
+        return {"available": False,
+                "reason": reason or "no attempt produced a per-stage breakdown"}
     return {
-        "session_id": obj.get("session_id"),
-        "total_cost_usd": obj.get("total_cost_usd"),
-        "usage": obj.get("usage") or {},
-        "num_turns": obj.get("num_turns"),
-        "model_snapshot": obj.get("model") or model_snapshot,
+        "available": True,
+        "stages": [{"stage": s, "input_tokens": stage_acc[s][0],
+                    "output_tokens": stage_acc[s][1], "messages": stage_acc[s][2]}
+                   for s in order],
+        "note": "summed across attempts; best-effort from the stream-json transcript",
     }
+
+
+# --------------------------------------------------------------------------------
+# Live conversion — drives the real agent. Bounded by the retry cap.
+# --------------------------------------------------------------------------------
+
+def convert_live(proc):
+    """Drive `claude -p` through the pipeline for ONE proc, up to RETRY_CAP retries.
+
+    Returns a dict with attempts, retries, model snapshot, token/cost totals, a
+    PER-ATTEMPT breakdown (tokens/cost/turns + a claude-vs-gate wall split), the
+    best-effort per-subagent stage_breakdown, and the last gate output. The Stop hook
+    (stop-differential.sh, made proc-aware via CONVERT_PROC) blocks an early finish
+    inside each session; THIS loop is the hard across-attempts cap that guarantees
+    termination (pipeline/retry.md)."""
+    prompt = build_conversion_prompt(proc)
+    # CONVERT_PROC makes the Stop hook proc-aware. CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=0
+    # is load-bearing: with it left at 1 (the interactive default here), the child
+    # `claude` FORCES permission-mode back to default and ignores --permission-mode
+    # acceptEdits, so the headless agent can never write a file and every attempt
+    # ends with 0 turns. Turning the scrub OFF for this child restores acceptEdits;
+    # the Foundry key is already present in this shell (we run outside a Claude Code
+    # session, per run-live.ps1), so auth is unaffected.
+    env = dict(os.environ, CONVERT_PROC=proc, CLAUDE_CODE_SUBPROCESS_ENV_SCRUB="0")
+
+    totals = {"input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "num_turns": 0}
+    per_attempt = []
+    breakdowns = []
+    snapshot = None
+    session_id = None
+    last_gate = ""
+    outcome = "failed:build"
+    attempt = 0
+
+    while attempt <= RETRY_CAP:
+        attempt += 1
+        cmd = [
+            "claude", "-p",
+            # stream-json (not plain json) so the transcript is available for the
+            # per-subagent split; --verbose is required with stream-json in -p mode.
+            # The session TOTALS still come from the terminal {"type":"result"} event,
+            # so the headline numbers are identical to the old json path.
+            "--output-format", "stream-json",
+            "--verbose",
+            "--model", MODEL,
+            "--permission-mode", "acceptEdits",
+            "--allowedTools", "Read,Grep,Glob,Write,Edit,Bash,Task,Skill",
+        ]
+        if session_id:
+            # Resume with the gate's feedback as the correction (the across-attempts
+            # half of the retry protocol) rather than starting cold.
+            cmd += ["--resume", session_id]
+            turn_prompt = retry_prompt(proc, last_gate)
+        else:
+            turn_prompt = prompt
+
+        # Feed the prompt over STDIN, not as a positional arg. Through the Windows
+        # `claude.cmd` shim a long trailing argument is dropped and the CLI aborts
+        # with "Input must be provided either through stdin or as a prompt argument"
+        # (0 turns, ~3s) — exactly the empty attempts run-001 recorded. --print reads
+        # stdin when no prompt arg is given, so this is the portable path.
+        t_claude0 = time.time()
+        rc, raw = sh(cmd, env=env, timeout=1800, stdin_text=turn_prompt)
+        claude_seconds = round(time.time() - t_claude0, 1)
+        _debug_dump(proc, attempt, "claude", f"rc={rc}\n\n{raw}")
+
+        meta, breakdown = parse_claude_stream(raw)
+        a_in = a_out = a_turns = 0
+        a_cost = 0.0
+        if meta:
+            session_id = meta.get("session_id", session_id)
+            snapshot = snapshot or meta.get("model_snapshot")
+            u = meta.get("usage", {})
+            a_in = int(u.get("input_tokens", 0) or 0)
+            a_out = int(u.get("output_tokens", 0) or 0)
+            a_cost = float(meta.get("total_cost_usd", 0) or 0)
+            a_turns = int(meta.get("num_turns", 0) or 0)
+            totals["input_tokens"] += a_in
+            totals["output_tokens"] += a_out
+            totals["cost_usd"] += a_cost
+            totals["num_turns"] += a_turns
+        breakdowns.append(breakdown)
+
+        t_gate0 = time.time()
+        outcome, last_gate = run_gates(proc)
+        gate_seconds = round(time.time() - t_gate0, 1)
+        _debug_dump(proc, attempt, "gate", f"outcome={outcome}\n\n{last_gate}")
+
+        per_attempt.append({
+            "attempt": attempt,
+            "input_tokens": a_in,
+            "output_tokens": a_out,
+            "cost_usd": round(a_cost, 6),
+            "num_turns": a_turns,
+            "wall_seconds": {"claude": claude_seconds, "gate": gate_seconds},
+            "gate_outcome": outcome,
+            "stage_breakdown": breakdown,
+        })
+
+        if outcome == "cleared":
+            break
+
+    note = None if outcome == "cleared" else "retry cap exhausted"
+    result = {
+        "attempts": attempt,
+        "retries": attempt - 1,
+        "snapshot": snapshot,
+        "totals": totals,
+        "gate_outcome": outcome,
+        "last_gate": last_gate,
+        "per_attempt": per_attempt,
+        "stage_breakdown": _merge_breakdowns(breakdowns),
+    }
+    if note:
+        result["note"] = note
+    return result
 
 
 def build_conversion_prompt(proc):
@@ -358,19 +559,32 @@ def evaluate_proc(proc, manifest, dry_run):
     artifact and no model is invoked; live, convert_live drives the agent."""
     t0 = time.time()
     record = {"proc": proc, "outcome": None, "retries": None, "attempts": None}
+    unavailable_dry = {"available": False, "reason": "dry-run — no model invoked"}
 
     if dry_run:
         # No model. Measure the committed artifact exactly as the gate would.
+        t_gate0 = time.time()
         gate_outcome, gate_out = run_gates(proc)
+        gate_seconds = round(time.time() - t_gate0, 1)
         totals = {"input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "num_turns": 0}
         snapshot = None
         attempts = retries = 0
+        per_attempt = [{
+            "attempt": 0,
+            "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "num_turns": 0,
+            "wall_seconds": {"claude": 0.0, "gate": gate_seconds},
+            "gate_outcome": gate_outcome,
+            "stage_breakdown": unavailable_dry,
+        }]
+        stage_breakdown = unavailable_dry
     else:
         conv = convert_live(proc)
         gate_outcome, gate_out = conv["gate_outcome"], conv["last_gate"]
         totals = conv["totals"]
         snapshot = conv["snapshot"]
         attempts, retries = conv["attempts"], conv["retries"]
+        per_attempt = conv["per_attempt"]
+        stage_breakdown = conv["stage_breakdown"]
         # The agent ADDS the converted proc to generated/runners.json during the run,
         # so the manifest loaded at startup is stale for a newly-converted proc. Reload
         # from disk here — without it build_service/source_sha256 KeyError on the new
@@ -407,6 +621,11 @@ def evaluate_proc(proc, manifest, dry_run):
         "cost_usd": round(totals["cost_usd"], 6),
         "num_turns": totals["num_turns"],
         "wall_seconds": round(time.time() - t0, 1),
+        # Finer-grained economics (the per-step ask): one entry per attempt with its
+        # own tokens/cost/turns and a claude-vs-gate wall split, plus the best-effort
+        # per-subagent-stage token attribution for the whole proc.
+        "per_attempt": per_attempt,
+        "stage_breakdown": stage_breakdown,
     })
     return record
 

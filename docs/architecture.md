@@ -117,6 +117,11 @@ post-hoc script:
   doesn't match golden cannot be declared done; the failure is fed back as
   structured feedback and the agent retries (cap 2).
 - **`PreToolUse`** blocks writes outside allowed folders — the agent can't wander.
+  It guards the file-write tools (`Write`/`Edit`/…) *and*, as defence in depth, a
+  `Bash` call that both mutates and names a protected path (`cp`/`mv`/`sed -i`/
+  `git checkout`/redirection into `corpus/`, …). That Bash check is a heuristic
+  bar-raiser, not a sandbox — the non-bypassable backstop stays a fresh-checkout
+  `verify.sh`, which re-derives the numbers from the committed oracle regardless.
 
 The gate-tools themselves are **Bash scripts** (ADR-0005) — the same artifact the
 agent calls, the hook invokes, and a human reads. `verify.sh` composes
@@ -136,7 +141,12 @@ And the gate's authority is **proven, not asserted**: `mutation-check.sh`
 > progress (k=1 measured). See [`../evals/results/summary.md`](../evals/results/summary.md).
 
 The harness runs Claude Code **headless** (`claude -p …`) once per procedure and
-records, per proc: the differential verdict, retries used, tokens, and cost. It runs
+records, per proc: the differential verdict, retries used, tokens, and cost — and,
+one level finer, a **per-attempt** split (each retry's own tokens/cost/turns and a
+claude-vs-gate wall-time split) plus a **best-effort per-subagent-stage** token
+attribution read from the stream transcript, which degrades honestly (records
+`available: false` with a reason) when the transcript lacks the linkage rather than
+fabricating a split. It runs
 once per **sample**; across the pre-registered `k=3` samples,
 [`evals/aggregate.py`](../evals/aggregate.py) reports a **distribution**, flags
 `flaky` procedures, and audits that each sample genuinely regenerated (a 0-turn
