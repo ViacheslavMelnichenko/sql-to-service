@@ -280,7 +280,10 @@ corpus/
   procs/            original T-SQL procedures (the input)
   golden/           output captured from the originals, before any model
   seed/             relational seed + fixed migration to the Mongo seed
+  features/         deterministic AST feature cards — observability, NOT a gate (ADR-0008)
+  extract-features.py  the sqlglot parser that emits those cards ($0, no model)
 gates/              build · unit · differential · verify (deterministic tools)
+                    features-check.sh — standalone; proves the cards hold no authority
 generated/          what the agent produced (the vehicle's output)
 evals/              the harness, the method, and the results
 docs/               architecture and decision records (ADRs)
@@ -292,7 +295,7 @@ demo/               a guided, step-by-step walkthrough (open demo/index.html)
 ## Documentation
 
 Everything, in reading order, is indexed in **[`docs/README.md`](docs/README.md)**
-— the architecture, the seven ADRs, the pipeline's retry protocol, the eval
+— the architecture, the eight ADRs, the pipeline's retry protocol, the eval
 preregistration, and the corpus provenance. New here? The **[`demo/`](demo/)**
 walkthrough is the fastest way in.
 

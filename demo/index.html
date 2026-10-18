@@ -278,6 +278,29 @@
   .seg button + button { border-left: 1px solid var(--line); }
   .seg button.on { background: var(--clay); color: #fff; }
   .seg button:not(.on):hover { background: var(--hover); color: var(--ink); }
+
+  /* ---- feature extractor widget (observability slide) ---- */
+  .fx { margin: 14px 0 6px; max-width: var(--frame); }
+  .fx-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .fx select { font: inherit; font-size: 13px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 9px; padding: 6px 9px; cursor: pointer; }
+  .fx-meta { display: flex; flex-wrap: wrap; gap: 6px; font-size: 11px; color: var(--ink-3); }
+  .fx-meta .tag { background: var(--paper-2); border: 1px solid var(--line); border-radius: 6px; padding: 2px 7px; }
+  .fx-meta .tag.degraded { background: var(--warn-bg); color: var(--warn-fg); border-color: var(--warn); }
+  .fx-split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
+  .fx-sql { background: var(--code-bg); color: var(--code-fg); border-radius: 12px; padding: 12px 14px; margin: 0; font-size: 11.5px; line-height: 1.5; max-height: 360px; overflow: auto; white-space: pre; }
+  .fx-cards { display: flex; flex-direction: column; gap: 8px; max-height: 360px; overflow: auto; }
+  .fx-card { background: var(--card); border: 1px solid var(--line); border-left-width: 3px; border-radius: 10px; padding: 9px 11px; }
+  .fx-card.r-high { border-left-color: var(--clay); }
+  .fx-card.r-medium { border-left-color: var(--warn); }
+  .fx-card.r-low { border-left-color: var(--ink-3); }
+  .fx-card .conseq { font-size: 13px; color: var(--ink); margin: 0 0 4px; }
+  .fx-card .foot { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 10.5px; }
+  .fx-card .k { font-family: ui-monospace, monospace; color: var(--clay-d); }
+  .fx-card .detail { font-family: ui-monospace, monospace; color: var(--code-dim); }
+  .fx-card .skill { background: var(--good-bg); color: var(--good); border-radius: 5px; padding: 1px 6px; }
+  .fx-card .risk { text-transform: uppercase; letter-spacing: .4px; color: var(--ink-3); }
+  .fx-empty { color: var(--ink-3); font-size: 13px; padding: 8px 2px; }
+  @media (max-width: 900px) { .fx-split { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -647,6 +670,11 @@ cat generated/Website.SearchForCustomers.review.md   <span class="c"># the revie
         </div>
       </div>
 
+      <div class="oracle-lane">
+        <div class="oracle"><b>feature-extract</b> <span class="muted">(sqlglot · $0 · no model)</span><br><span class="muted">AST → <code>corpus/features/&lt;Proc&gt;.features.json</code></span></div>
+        <div class="feeds">a <b>side lane</b> — deterministic observation only; <strong>not on the correctness path</strong>, read by no stage and no gate (ADR-0008)</div>
+      </div>
+
       <section class="sec">
         <p class="sec-eyebrow">The one arrow that matters most</p>
         <h3 class="sec-title">The golden reaches everyone — but never through the code</h3>
@@ -661,6 +689,27 @@ cat generated/Website.SearchForCustomers.review.md   <span class="c"># the revie
         <p class="sec-eyebrow">What this proves</p>
         <h3 class="sec-title">A test can only agree with wrong code by accident</h3>
         <div class="note">Because the golden reaches the test-author <em>without passing through the implementer's code</em>, a test can agree with a wrong conversion only by coincidence — never by inheriting the implementer's misunderstanding. That single arrow is the non-circular gate made concrete at the agent level, and it is the reason the accuracy number, when it arrives, will actually mean something.</div>
+      </section>
+    </section>
+
+    <!-- 5b -->
+    <section class="slide" data-lang="en" data-title="Feature extractor">
+      <p class="kicker">Step 4b · ADR-0008 · grounding, not judging</p>
+      <h2 class="title">Read the SQL the way the pipeline does — for free</h2>
+      <p class="lede">Before the gates judge anything, it helps to <em>see</em> what each procedure actually contains. This slide is a read-only lens: it parses the T-SQL into an AST and lists the facts that matter for a faithful conversion — which joins drop rows, where money columns live, how the JSON is shaped. It runs on <code>sqlglot</code>, costs <strong>$0</strong>, and calls no model.</p>
+
+      <section class="sec">
+        <p class="sec-eyebrow">What it is — and what it is not</p>
+        <h3 class="sec-title">An observability tool with zero authority over correctness</h3>
+        <p>Pick a procedure and read its feature card beside the source. These are <strong>facts, not verdicts</strong>: the extractor never writes C#, never decides <em>how</em> to convert, and — this is the point — <strong>nothing in the correctness loop reads these cards.</strong> The non-circular differential against the golden stays the sole judge. <code>gates/features-check.sh</code> proves that mechanically: it fails if any agent, <code>verify.sh</code>, or <code>differential.sh</code> so much as mentions <code>corpus/features</code>. So this lens can be wrong or absent and the published accuracy number does not move.</p>
+      </section>
+
+      <div class="fx" data-fx="en"></div>
+
+      <section class="sec">
+        <p class="sec-eyebrow">Why show it at all</p>
+        <h3 class="sec-title">It names the traps a reviewer would otherwise hunt for</h3>
+        <div class="note">Each chip leads with the plain-English consequence — "a row with no match is silently dropped", "a float cast here loses precision the customer sees" — and points at the versioned skill that handles it. It is a map of where a conversion can go subtly wrong, generated deterministically from the AST. The three converted procedures sit at the top of the list; the rest are shown to prove the parser handles the whole corpus, degrading honestly (⚠ partial parse) on cursors and <code>SYSTEM_TIME</code> rather than guessing.</div>
       </section>
     </section>
 
@@ -1316,6 +1365,11 @@ cat generated/Website.SearchForCustomers.review.md   <span class="c"># верд�
         </div>
       </div>
 
+      <div class="oracle-lane">
+        <div class="oracle"><b>feature-extract</b> <span class="muted">(sqlglot · $0 · без моделі)</span><br><span class="muted">AST → <code>corpus/features/&lt;Proc&gt;.features.json</code></span></div>
+        <div class="feeds"><b>бічна доріжка</b> — лише детермінована спостережність; <strong>не на шляху правильності</strong>, її не читає жодна стадія і жодна перевірка (ADR-0008)</div>
+      </div>
+
       <section class="sec">
         <p class="sec-eyebrow">Одна стрілка, що важить найбільше</p>
         <h3 class="sec-title">Golden доходить до всіх — але ніколи через код</h3>
@@ -1330,6 +1384,27 @@ cat generated/Website.SearchForCustomers.review.md   <span class="c"># верд�
         <p class="sec-eyebrow">Що це доводить</p>
         <h3 class="sec-title">Тест може погодитися з хибним кодом лише випадково</h3>
         <div class="note">Оскільки golden доходить до test-author'а <em>не проходячи через код implementer'а</em>, тест може погодитися з хибною конверсією лише випадково — ніколи через успадкування нерозуміння implementer'а. Ця одна стрілка — це некруговий оракул, втілений на рівні агентів, і причина, чому число точності, коли воно зʼявиться, щось означатиме.</div>
+      </section>
+    </section>
+
+    <!-- uk 5b -->
+    <section class="slide" data-lang="uk" data-title="Екстрактор фіч">
+      <p class="kicker">Крок 4b · ADR-0008 · ґрунтування, не судження</p>
+      <h2 class="title">Прочитати SQL так, як це робить пайплайн — безкоштовно</h2>
+      <p class="lede">Перш ніж перевірки щось присудять, корисно <em>побачити</em>, що насправді містить кожна процедура. Цей слайд — лінза лише для читання: вона парсить T-SQL у AST і перелічує факти, важливі для вірної конверсії — які join'и відкидають рядки, де живуть грошові колонки, як сформовано JSON. Працює на <code>sqlglot</code>, коштує <strong>$0</strong> і не викликає модель.</p>
+
+      <section class="sec">
+        <p class="sec-eyebrow">Що це — і чим воно не є</p>
+        <h3 class="sec-title">Інструмент спостережності без жодної влади над правильністю</h3>
+        <p>Оберіть процедуру й прочитайте її картку фіч поруч із джерелом. Це <strong>факти, а не вироки</strong>: екстрактор ніколи не пише C#, ніколи не вирішує, <em>як</em> конвертувати, і — ось у чому суть — <strong>ніщо в циклі правильності не читає ці картки.</strong> Некругова диференціальна перевірка проти golden лишається єдиним суддею. <code>gates/features-check.sh</code> доводить це механічно: вона падає, якщо будь-який агент, <code>verify.sh</code> чи <code>differential.sh</code> бодай згадає <code>corpus/features</code>. Тож ця лінза може бути хибною чи відсутньою — число точності не зрушить.</p>
+      </section>
+
+      <div class="fx" data-fx="uk"></div>
+
+      <section class="sec">
+        <p class="sec-eyebrow">Навіщо це взагалі показувати</p>
+        <h3 class="sec-title">Воно називає пастки, які рецензент інакше шукав би вручну</h3>
+        <div class="note">Кожен чип починається з наслідку простою мовою — «рядок без відповідності мовчки відкидається», «приведення до float тут втрачає точність, яку бачить клієнт» — і вказує на версійований скіл, що це обробляє. Це карта того, де конверсія може непомітно піти не так, згенерована детерміновано з AST. Три конвертовані процедури — вгорі списку; решта показані, щоб довести, що парсер тримає весь корпус, чесно деградуючи (⚠ частковий парсинг) на курсорах і <code>SYSTEM_TIME</code>, а не вгадуючи.</div>
       </section>
     </section>
 
@@ -1652,6 +1727,79 @@ cleared 3   ·   failed:differential 0   ·   flaky 0   ·   failed:retry_cap 0<
   <span class="count" id="count"></span>
   <button class="btn primary" id="next">Next →</button>
 </div>
+
+<!-- Feature cards: generated by corpus/extract-features.py --emit-demo, kept
+     byte-identical to corpus/features/*.json by gates/features-check.sh. -->
+<script src="features-data.js"></script>
+<script>
+  // ---- feature extractor widget (ADR-0008 observability slide) ----
+  // Reads window.FEATURES (catalogue + per-proc cards). Pure read-only render:
+  // this widget has no path to the correctness verdict, mirroring the tool itself.
+  (function () {
+    var UI = {
+      en: { params: 'params', tables: 'tables', output: 'output', partial: '⚠ partial parse',
+            none: 'No noteworthy features detected.', converted: 'converted' },
+      uk: { params: 'параметри', tables: 'таблиці', output: 'вивід', partial: '⚠ частковий парсинг',
+            none: 'Помітних фіч не виявлено.', converted: 'конвертовано' }
+    };
+    function esc(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function renderCard(container, lang, name) {
+      var F = window.FEATURES, t = UI[lang];
+      var entry = F.procs[name]; if (!entry) return;
+      var card = entry.card, cat = F.catalogue;
+      var meta = [];
+      var cls = card.parse_status === 'degraded' ? ' degraded' : '';
+      meta.push('<span class="tag' + cls + '">' +
+        (card.parse_status === 'degraded' ? t.partial : card.parse_status) + '</span>');
+      meta.push('<span class="tag">' + t.output + ': ' + esc(card.output_shape) + '</span>');
+      meta.push('<span class="tag">' + card.params.length + ' ' + t.params + '</span>');
+      meta.push('<span class="tag">' + card.tables.length + ' ' + t.tables + '</span>');
+
+      var cards = '';
+      if (!card.features.length) {
+        cards = '<div class="fx-empty">' + t.none + '</div>';
+      } else {
+        card.features.forEach(function (f) {
+          var info = cat[f.kind] || { risk: 'low', skill: '-' };
+          var conseq = info['consequence_' + lang] || info.consequence_en || '';
+          var skill = info.skill && info.skill !== '-'
+            ? '<span class="skill">' + esc(info.skill) + '</span>' : '';
+          cards += '<div class="fx-card r-' + esc(info.risk) + '">' +
+            '<p class="conseq">' + esc(conseq) + '</p>' +
+            '<div class="foot">' +
+              '<span class="k">' + esc(f.kind) + '</span>' +
+              '<span class="detail">' + esc(f.detail) + '</span>' +
+              skill +
+              '<span class="risk">' + esc(info.risk) + '</span>' +
+            '</div></div>';
+        });
+      }
+      container.querySelector('.fx-meta').innerHTML = meta.join('');
+      container.querySelector('.fx-sql').textContent = entry.sql;
+      container.querySelector('.fx-cards').innerHTML = cards;
+    }
+    function buildWidget(container) {
+      var F = window.FEATURES; if (!F) { container.innerHTML =
+        '<div class="fx-empty">features-data.js not loaded.</div>'; return; }
+      var lang = container.dataset.fx === 'uk' ? 'uk' : 'en';
+      var opts = F.order.map(function (name, idx) {
+        var label = name + (idx < 3 ? '  ★ ' + UI[lang].converted : '');
+        return '<option value="' + esc(name) + '">' + esc(label) + '</option>';
+      }).join('');
+      container.innerHTML =
+        '<div class="fx-bar"><select class="fx-pick">' + opts + '</select>' +
+        '<div class="fx-meta"></div></div>' +
+        '<div class="fx-split"><pre class="fx-sql"></pre><div class="fx-cards"></div></div>';
+      var sel = container.querySelector('.fx-pick');
+      sel.onchange = function () { renderCard(container, lang, sel.value); };
+      renderCard(container, lang, F.order[0]);
+    }
+    Array.prototype.slice.call(document.querySelectorAll('.fx[data-fx]')).forEach(buildWidget);
+  })();
+</script>
 
 <script>
   var allSlides = Array.prototype.slice.call(document.querySelectorAll('.slide'));

@@ -1,0 +1,65 @@
+{
+  "features": [
+    {
+      "detail": "Application.Cities c -> Application.Countries co",
+      "kind": "join.inner"
+    },
+    {
+      "detail": "Application.Cities c -> Application.StateProvinces sp",
+      "kind": "join.inner"
+    },
+    {
+      "detail": "UNION ALL (arms combined, no de-dup)",
+      "kind": "set_op"
+    },
+    {
+      "detail": "FOR SYSTEM_TIME history read",
+      "kind": "temporal"
+    },
+    {
+      "detail": "cursor over history rows",
+      "kind": "temporal"
+    }
+  ],
+  "generated_by": "corpus/extract-features.py",
+  "output_shape": "rowset",
+  "params": [
+    {
+      "name": "@LastCutoff",
+      "type": "DATETIME2(7)"
+    },
+    {
+      "name": "@NewCutoff",
+      "type": "DATETIME2(7)"
+    }
+  ],
+  "parse_notes": [
+    "some inner statements fell back to Command (regex used)"
+  ],
+  "parse_status": "degraded",
+  "proc": "Integration.GetCityUpdates",
+  "schema_version": 1,
+  "sqlglot_version": "30.23.0",
+  "tables": [
+    {
+      "alias": "c",
+      "name": "Application.Cities"
+    },
+    {
+      "alias": "co",
+      "name": "Application.Countries"
+    },
+    {
+      "alias": "sp",
+      "name": "Application.StateProvinces"
+    },
+    {
+      "alias": "",
+      "name": "CityChanges"
+    },
+    {
+      "alias": "cc2",
+      "name": "CityChanges"
+    }
+  ]
+}

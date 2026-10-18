@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "sqlglot_version": "30.23.0",
+  "proc": "Sales.SampleSearch",
+  "generated_by": "corpus/extract-features.py",
+  "parse_status": "ok",
+  "params": [
+    {
+      "name": "@SearchText",
+      "type": "NVARCHAR(100)"
+    },
+    {
+      "name": "@MaxRows",
+      "type": "INT"
+    }
+  ],
+  "tables": [
+    {
+      "name": "Sales.Customers",
+      "alias": "c"
+    },
+    {
+      "name": "Sales.Orders",
+      "alias": "o"
+    },
+    {
+      "name": "Sales.People",
+      "alias": "p"
+    }
+  ],
+  "output_shape": "for-json",
+  "features": [
+    {
+      "kind": "decimal_column",
+      "detail": "Total : Sales.Orders.Total",
+      "resolved": true
+    },
+    {
+      "kind": "decimal_column",
+      "detail": "TotalCast : NUMERIC(18, 2)",
+      "resolved": true
+    },
+    {
+      "kind": "for_json",
+      "detail": "FOR JSON AUTO, ROOT('Orders')"
+    },
+    {
+      "kind": "join.inner",
+      "detail": "Sales.Orders o -> Sales.Customers c"
+    },
+    {
+      "kind": "join.left",
+      "detail": "Sales.Orders o -> Sales.People p"
+    },
+    {
+      "kind": "like_concat",
+      "detail": "WHERE CONCAT(...) LIKE pattern (CONCAT treats NULL as '')"
+    },
+    {
+      "kind": "top_order",
+      "detail": "TOP(...) after ORDER BY CustomerName"
+    }
+  ],
+  "parse_notes": []
+}

@@ -1,0 +1,55 @@
+{
+  "features": [
+    {
+      "detail": "FOR JSON AUTO, ROOT('People')",
+      "kind": "for_json"
+    },
+    {
+      "detail": "Application.People p -> Purchasing.Suppliers sp",
+      "kind": "join.left"
+    },
+    {
+      "detail": "Application.People p -> Sales.Customers c",
+      "kind": "join.left"
+    },
+    {
+      "detail": "TOP(...) after ORDER BY FullName",
+      "kind": "top_order"
+    }
+  ],
+  "generated_by": "corpus/extract-features.py",
+  "output_shape": "for-json",
+  "params": [
+    {
+      "name": "@SearchText",
+      "type": "NVARCHAR(1000)"
+    },
+    {
+      "name": "@MaximumRowsToReturn",
+      "type": "INT"
+    }
+  ],
+  "parse_notes": [],
+  "parse_status": "ok",
+  "proc": "Website.SearchForPeople",
+  "schema_version": 1,
+  "sqlglot_version": "30.23.0",
+  "tables": [
+    {
+      "alias": "p",
+      "name": "Application.People"
+    },
+    {
+      "alias": "sa",
+      "name": "Purchasing.Suppliers"
+    },
+    {
+      "alias": "sp",
+      "name": "Purchasing.Suppliers"
+    },
+    {
+      "alias": "c",
+      "name": "Sales.Customers"
+    }
+  ]
+}

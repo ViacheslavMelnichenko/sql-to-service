@@ -1,172 +1,202 @@
-# Design — AST feature-extraction that grounds the LLM conversion
+# Design — Deterministic AST feature extraction (grounding + observability)
 
 **Date:** 2026-10-18
-**Status:** proposed (awaiting review)
+**Status:** approved (revised after a four-agent expert review; scope narrowed to demo-first)
 **Owner:** Viacheslav Melnichenko
 
-> **Укр. резюме (one-paragraph):** Додаємо детерміновану стадію *перед* аналітиком:
-> парсер `sqlglot` розбирає кожну T-SQL процедуру в AST і випускає структуровану
-> **feature card** (`generated/<Proc>.features.json`) — факти про joins (INNER/LEFT),
-> `TOP`+`ORDER BY`, `FOR JSON AUTO`, decimal-колонки, `LIKE`/`CONCAT`, temporal. Ця
-> картка (1) **заземлює** аналітика структурованими фактами, (2) **крос-перевіряється**
-> reviewer-ом проти спеки/коду, (3) **наочно показується** у двомовному demo-слайді
-> для PM. Це НЕ транспайлер — C# не генерується; це детермінований аналіз, що робить
-> LLM-крок спостережуваним і перевірюваним, посилюючи головну тезу репозиторію.
+> **Укр. резюме (one-paragraph):** Додаємо детерміновану, model-free стадію аналізу:
+> парсер `sqlglot` розбирає кожну T-SQL процедуру в AST і випускає **feature card**
+> (`corpus/features/<Proc>.features.json`) — *факти* про joins (INNER/LEFT), `TOP`+`ORDER
+> BY`, `FOR JSON`, decimal-колонки (через схему), `LIKE`/`CONCAT`, temporal. Картка —
+> це **спостережуваність + заземлення**, а не влада над коректністю: differential vs
+> golden лишається єдиним суддею. У цьому обсязі картка НЕ вшивається в analyst/reviewer
+> і НЕ в `verify.sh`; вона наочно показується у двомовному demo-слайді для PM. Це НЕ
+> транспайлер — C# не генерується.
+
+---
+
+## 0. What changed after review (and why)
+
+Four expert agents reviewed the first draft (sqlglot-feasibility, AI-pipeline best
+practices, demo/PM, adversarial). Their consensus reshaped the scope. The load-bearing
+corrections, each folded into this revision:
+
+1. **A feature card is *not* an oracle.** The golden is an *observation of the real
+   system* (the original proc executed on a seed); a card is a second static re-derivation
+   verified only by its own byte-stability. Determinism ≠ correctness. So the card gets
+   **no authority over the conversion** — it is grounding/observability only.
+2. **No new conversion benefits from it yet.** All three converted procs are already green;
+   the other 11 are out of scope. Wiring the card into `analyst`/`reviewer` would grant it
+   authority it has not earned (0 measured analyst misses). → **Demo-first / out-of-loop.**
+   Pipeline wiring is deferred behind a *measured* analyst miss (§7).
+3. **Do not touch `verify.sh`.** It is the authoritative, model-free, stdlib-only
+   reproduce-the-numbers script. Importing `sqlglot` into it would make a pip package a
+   prerequisite of the headline verdict and import parser-version flake. → The new gate is
+   **standalone**, never composed into `verify.sh`.
+4. **`*.uk.md` is gitignored** (`.gitignore:33`, "never committed"). → **No committed
+   Ukrainian doc files.** Bilingualism lives only in the demo's EN/UA toggle, where the
+   repo already keeps it.
+5. **Hooks:** the committed `.claude/settings.json` *has* the three hooks; they were only
+   disabled in the working tree for this repo-engineering. → Restore via
+   `git checkout .claude/settings.json` (the `.bak` is itself gitignored). No hook changes
+   ship.
+6. **Facts, not judgment.** A card that emits per-proc `risk` and narrative `note` is "the
+   analyzer the architecture rejected." → The card emits **facts + locations only**; risk,
+   skill routing and the plain-English consequence live in a **static per-`kind`
+   catalogue**, not in the per-proc output.
 
 ---
 
 ## 1. Problem & motivation
 
-The repository is a mature POC that proves *"an unreliable model can be trusted on a
-migration task, because an independent oracle catches its mistakes."* Today the
-conversion pipeline (`analyst → implementer → test-author → reviewer`) feeds the model
-the **raw `.sql` text** plus the golden output. There is **no deterministic structured
-analysis** of the T-SQL at all — no parser, AST, tokenizer, or IR. Every semantic trap
-(INNER vs LEFT join, `TOP` applied after `ORDER BY`, `FOR JSON AUTO` alias-nesting,
-decimal columns, `CONCAT` null-swallowing, temporal windows) is left to the model's
-reading of the text, guided only by prose skills.
+The repository proves *"an unreliable model can be trusted on a migration task, because an
+independent oracle catches its mistakes."* Today the pipeline feeds the model the **raw
+`.sql` text** plus the golden. There is **no deterministic structured analysis** of the
+T-SQL — no parser, AST or IR. That is a real gap against best-practice AI pipelines, and it
+leaves the pipeline's intelligence **invisible to a non-expert (a PM)**: nothing visibly
+says *"the AI did not guess from text — structure was extracted deterministically first,
+then the model reasoned, then an independent oracle verified."*
 
-Two consequences this design addresses:
-
-1. **Best-practice gap.** A production-grade AI pipeline *grounds* the model with a
-   deterministic structured extract instead of raw text, reducing hallucination and
-   making the model's job narrower and more auditable.
-2. **Demo / stakeholder gap.** The pipeline's intelligence is invisible to a non-expert
-   (e.g. a project manager). There is no artifact that visibly says *"the AI did not
-   guess from text — it first extracted the structure deterministically, then reasoned,
-   then was verified independently."*
-
-**Goal:** add a deterministic AST-based **feature-extraction stage** that grounds the
-LLM and is shown visually — without turning the project into a transpiler.
+**Goal (this scope):** add a deterministic, model-free, `$0` AST **feature-extraction
+tool** and make it **visible** in the demo — without granting it any authority over
+correctness and without turning the project into a transpiler.
 
 ### Non-goals (YAGNI)
 
-- **Not** generating C# from the AST (that would be a transpiler; see ADR-0008).
-- **Not** converting the remaining 11/14 procedures or completing the eval to k=3 —
-  a separate, model-paid track outside this scope.
-- **Not** changing the non-circular gate, the golden capture, or the Mongo seed.
+- **Not** generating C# from the AST (that is a transpiler; ADR-0008 records why we don't).
+- **Not** wiring the card into `analyst`/`reviewer`/`verify.sh`/the harness in this scope
+  (deferred behind a measured miss — §7).
+- **Not** committing any `*.uk.md` file (gitignored by policy).
+- **Not** converting the remaining 11 procs or completing the eval to k=3.
+- **Not** changing the non-circular gate, golden capture, or Mongo seed.
 
 ---
 
 ## 2. Thesis consistency (why this is not a transpiler)
 
-The architecture (`docs/architecture.md` §6) and the README deliberately reject a
-deterministic transpiler: *"it would be less AI, not more."* This design is consistent:
-
-- The extractor **never emits C#** and never decides *how* to convert. It only reports
-  **what semantic features are present**, as facts.
-- Correctness is still established downstream by the **non-circular differential gate**,
-  not by the extractor.
-- The feature card is to the *input* what the golden is to the *output*: a deterministic,
-  model-free artifact derived purely from a committed source (`corpus/procs/<Proc>.sql`
-  and the schema in `corpus/seed/relational.sql`). It is auditable and reproducible at
-  $0, exactly like the golden.
-
-The role of the extractor is **grounding + observability**, not translation. It makes the
-LLM step *narrower* (reason from extracted facts) and *checkable* (reviewer confirms every
-extracted feature is addressed).
+- The extractor **never emits C#** and never decides *how* to convert. It reports **what
+  semantic features are present**, as facts with source locations.
+- Correctness stays with the **non-circular differential gate** — untouched.
+- The card is to the *input* what a *log* is, not what the *golden* is: a deterministic,
+  model-free, `$0` artifact derived from committed sources (`corpus/procs/<Proc>.sql` +
+  `corpus/seed/relational.sql`). It is auditable and reproducible, but it is **not an
+  oracle** and nothing in the correctness loop reads it (proven mechanically — §3.4 #5).
 
 ---
 
 ## 3. Architecture
 
-### 3.1 New data flow
+### 3.1 Data flow (this scope)
 
 ```
 corpus/procs/<Proc>.sql ─┐
-                         ├─▶ corpus/extract-features.py ─▶ generated/<Proc>.features.json
-corpus/seed/relational.sql ┘   (sqlglot, deterministic, $0, no model)        │
+                         ├─▶ corpus/extract-features.py ─▶ corpus/features/<Proc>.features.json   (model-free zone,
+corpus/seed/relational.sql ┘   (sqlglot, deterministic, $0, no model)        │                     beside corpus/golden/)
+                                                                              ├─▶ demo/features-data.js  (derived; gate-synced)
                                                                               ▼
-                                           analyst reads features.json FIRST (grounding)
-                                                 → generated/<Proc>.spec.md
-                                                 → implementer → test-author
-                                                 → reviewer cross-checks spec/code vs features.json
-                                                 → differential gate (unchanged)
+                                                                  demo/index.html  "Feature extractor" slide
 ```
 
-The extractor runs **before the model** in the live harness, and its output is
-**committed for all 14 procs** (cheap, since it's model-free).
+The card lives in **`corpus/features/`** — the model-free zone next to `corpus/golden/`,
+*not* in `generated/` (which is the model's output directory). It is **not** consumed by
+any pipeline stage in this scope.
 
 ### 3.2 Component: `corpus/extract-features.py`
 
-Pure function: `(sql_text, schema_types) → feature_card`. CLI: takes a proc name (or
-`--all`), reads `corpus/procs/<Proc>.sql`, writes `generated/<Proc>.features.json`.
+Pure-ish function `(sql_text, schema_types) → feature_card`. CLI:
+- `extract-features.py <Proc>` → write `corpus/features/<Proc>.features.json`
+- `extract-features.py --all` → all 14 procs
+- `extract-features.py --emit-demo` → write `demo/features-data.js` from the 14 cards
 
-**Parsing:** `sqlglot.parse_one(sql, dialect="tsql")`, walking the AST with
-`expression.find_all(...)`.
+**Parsing (feasibility-verified fixes):**
+- Pre-strip `RETURN\s+\d+\s*;` before `parse_one(sql, dialect="tsql")` — without this,
+  `parse_one` crashes on all 9 `Integration.Get*Updates` procs (their body ends `RETURN 0;`).
+- Wrap in try/except: on failure emit `parse_status:"degraded"` + a `parse_notes` entry
+  instead of crashing (graceful degradation, verified).
 
-**Schema awareness (the differentiator):** parse `corpus/seed/relational.sql`'s
-`CREATE TABLE` statements once to build a `{table.column → sql_type}` map, so the
-extractor can resolve which **output columns are `decimal`/`money`** — not just guess
-from names.
+**Detectors — facts only (no risk/note in output):**
 
-**Detectors (each maps to a skill):**
+| Feature `kind`   | Detection (AST unless noted)                                              |
+|------------------|--------------------------------------------------------------------------|
+| `join.inner`     | `Join(side=None, kind=INNER)` → left/right tables + aliases; **dedup** (temporal procs repeat joins 3× via cursors) |
+| `join.left`      | `Join(side=LEFT, kind=OUTER)` → tables + aliases; dedup                   |
+| `top_order`      | `select.args['limit']` present **and** `select.args['order']` columns     |
+| `for_json`       | `select.args['for_']` present; mode (`AUTO`/`PATH`) + `ROOT(name)` via **regex fallback** (sqlglot doesn't structure the option) |
+| `decimal_column` | output column resolved to `{DECIMAL, MONEY, SMALLMONEY}` via schema map (§3.3); honors enclosing `exp.Cast` target type |
+| `like_concat`    | `exp.Like` co-present with `exp.Concat`                                   |
+| `temporal`       | `FOR SYSTEM_TIME` from `Table.args['version']` (AST); `*_Archive` refs and `DECLARE CURSOR`/`FETCH` via **regex** (they fall to `exp.Command`) |
+| `param`          | parameters + declared types from the `Create` node                        |
 
-| Feature `kind`        | What it detects                                              | Skill |
-|-----------------------|-------------------------------------------------------------|-------|
-| `join.inner`          | each INNER JOIN: left/right table + aliases (drops rows)     | tsql-semantics |
-| `join.left`           | each LEFT OUTER JOIN: keeps row + null-fills                 | tsql-semantics |
-| `top_order`           | `TOP(@n)` present + the `ORDER BY` columns (order-then-limit)| tsql-semantics |
-| `for_json`            | `FOR JSON AUTO/PATH` + `ROOT(name)` + alias-nesting note     | document-modelling |
-| `decimal_column`      | output columns resolved to `decimal`/`money` via schema map  | decimal-mapping |
-| `like_concat`         | `WHERE ... LIKE` combined with `CONCAT(...)` (null-swallow)  | tsql-semantics |
-| `temporal`            | `FOR SYSTEM_TIME`, `*_Archive` refs, cursor over history     | tsql-semantics |
-| `param`               | procedure parameters + declared types                        | — |
+### 3.3 Schema-aware decimal resolution (kept; hardened; 3-proc scope)
 
-**Output contract** (`generated/<Proc>.features.json`):
+Empirically the differentiator works for the converted procs. Hardening (all feasibility-verified):
+- Build the `{table.column → DataType.Type}` map by **isolating each `CREATE TABLE` block**
+  (split on `GO`) and `parse_one` each — a whole-file IGNORE parse recovers only 20/30.
+- Match on the **enum set** `{DECIMAL, MONEY, SMALLMONEY}`, never the string `"decimal"`
+  (sqlglot renders `decimal(18,2)` as `NUMERIC`; `MONEY` is a distinct enum).
+- Honor an enclosing `exp.Cast` target type so `CAST(sit.Quantity AS int)` is **not**
+  flagged decimal.
+- A **missing** schema key resolves to `"unknown"`, **never** "not decimal".
+- Computed/`CASE`/`COALESCE` outputs are marked `resolved:false` with
+  `"still-money-bearing"` guidance in the catalogue — "unresolved" must not read as "not
+  decimal".
+
+### 3.4 Gate: `gates/features-check.sh` (standalone — NOT in `verify.sh`)
+
+Mirrors `verify-stable.sh` discipline; run on its own, never from `verify.sh`:
+1. **Presence & shape:** each of 14 `corpus/features/<Proc>.features.json` exists, is valid
+   JSON, carries `schema_version` and `sqlglot_version`.
+2. **Determinism:** re-run the extractor into a temp dir; assert **byte-identical** to the
+   committed cards (pinned sqlglot makes this stable).
+3. **Demo sync:** re-emit `demo/features-data.js`; assert **byte-identical** to the
+   committed file — the demo has no hand-pasted second copy.
+4. **Taxonomy (teeth):** every `feature.kind` in every card exists in the catalogue, and
+   every catalogue `skill` maps to a real `.claude/skills/<skill>/` dir (or `—`). This is
+   the one mechanical check that earns its keep: it catches skill↔extractor drift.
+5. **Out-of-authority proof (teeth, ADR-0006 style):** assert **no** file in the
+   correctness loop (`.claude/agents/*.md`, `gates/verify.sh`, `gates/differential.sh`)
+   references `corpus/features` — proving the card cannot change the differential verdict.
+   This is the demo-first equivalent of "corrupting the card must not flip the verdict."
+
+### 3.5 Output contract (`corpus/features/<Proc>.features.json`)
 
 ```json
 {
+  "schema_version": 1,
+  "sqlglot_version": "30.23.0",
   "proc": "Website.SearchForCustomers",
-  "generated_by": "corpus/extract-features.py (sqlglot, dialect=tsql)",
-  "params": [{"name": "@SearchText", "type": "nvarchar(1000)"}, ...],
-  "tables": [{"name": "Sales.Customers", "alias": "c"}, ...],
+  "generated_by": "corpus/extract-features.py",
+  "parse_status": "ok",
+  "params": [{"name": "@SearchText", "type": "NVARCHAR(1000)"}],
+  "tables": [{"name": "Sales.Customers", "alias": "c"}],
   "output_shape": "for-json",
   "features": [
-    {"kind": "join.inner", "detail": "Sales.Customers c INNER JOIN Application.Cities ct",
-     "skill": "tsql-semantics", "risk": "high",
-     "note": "a customer with no city is dropped"},
-    ...
-  ]
+    {"kind": "join.inner", "detail": "Sales.Customers c -> Application.Cities ct"},
+    {"kind": "decimal_column", "detail": "ct.TransactionAmount : DECIMAL(18,2)", "resolved": true}
+  ],
+  "parse_notes": []
 }
 ```
 
-`risk` ∈ {`high`,`medium`,`low`} drives both the reviewer gate and the demo highlight.
+No `risk`/`note` per feature. Determinism via
+`json.dumps(card, sort_keys=True, ensure_ascii=False, indent=2) + "\n"`.
 
-**Determinism:** output keys sorted, stable ordering, `\n` endings — mirrors the
-`canonicalise.py` discipline so re-runs are byte-identical.
+### 3.6 Static per-`kind` catalogue
 
-### 3.3 Pipeline wiring
+A single committed source of interpretation (`KIND_CATALOGUE` in the extractor, emitted
+into `demo/features-data.js`): `kind → {skill, risk, consequence_en, consequence_uk}`.
+Leads with the plain-English consequence (demo/PM review): e.g. `join.inner → "a customer
+with no city is silently dropped"`. This is where the EN/UA chip text comes from — no
+English-only `note` in the card, no second translation surface.
 
-- **`.claude/agents/analyst.md`:** instruct the analyst to read
-  `generated/<Proc>.features.json` **first** as deterministic grounding, and to treat
-  it as fact (not opinion). The spec must address every `high`-risk feature.
-- **`.claude/agents/reviewer.md`:** add a checklist step — every feature in
-  `features.json` must be accounted for in the spec and the generated code (e.g. a
-  `join.left` → code keeps the null-contact row; a `decimal_column` → no float cast).
-- **`evals/harness.py`:** before the live conversion of a proc, run
-  `extract-features.py <proc>` (deterministic, outside the model) so `features.json`
-  exists when the analyst starts. Mirrors how golden is produced outside the model.
+### 3.7 Tests: `corpus/tests/test_extract_features.py`
 
-### 3.4 Gate: `gates/features-check.sh` (lightweight, deterministic)
-
-A small gate (composed into `verify.sh`) that asserts, per proc in the manifest:
-- `generated/<Proc>.features.json` exists and is schema-valid JSON;
-- re-running the extractor produces a **byte-identical** card (determinism, mirrors
-  `verify-stable.sh`);
-- every `high`-risk feature's `skill`/`note` is non-empty.
-
-The **semantic** cross-check (does the code actually honor each feature?) stays the
-reviewer's responsibility — kept out of the deterministic gate to avoid brittle
-string-matching, consistent with how the project separates mechanical gates from
-judgment.
-
-### 3.5 Tests
-
-`corpus/tests/test_extract_features.py` (xUnit-of-Python, matching
-`corpus/tests/test_pure_tools.py` style): feed small T-SQL snippets, assert the
-extractor classifies joins, detects `TOP`+`ORDER BY`, resolves a decimal column from a
-tiny schema, flags `FOR JSON AUTO`, and is deterministic. Pure unit tests, no engines.
+Stdlib `unittest`, matching `test_pure_tools.py`. Skips cleanly if `sqlglot` is absent so
+the stdlib-only tools container stays green; runs fully where sqlglot is present. Covers:
+RETURN-strip lets all shapes parse; INNER vs LEFT classification; join dedup; `TOP`+`ORDER`
+detection; decimal resolved from a tiny schema; `CAST(... AS int)` is **not** decimal;
+`FOR JSON` + ROOT; `like_concat`; determinism (two runs byte-identical); degraded parse
+emits `parse_note` rather than raising.
 
 ---
 
@@ -174,86 +204,105 @@ tiny schema, flags `FOR JSON AUTO`, and is deterministic. Pure unit tests, no en
 
 ### 4.1 New interactive "Feature extractor" slide (`demo/index.html`)
 
-Self-contained, vanilla JS, no external deps (matches the existing deck). A **split
-view**:
+Inserted in **both** language sets at the same ordinal — between **"The pipeline"** and
+**"The gates"** (EN) / **"Пайплайн"** and **"Перевірки"** (UK). Self-contained vanilla JS,
+no external deps. A **split view**:
+- **Left:** the raw `.sql` of a selectable proc (dropdown).
+- **Right:** the card rendered as chips, **each leading with the plain-English
+  consequence** (not the SQL construct), grouped by the catalogue's `risk`, with the skill
+  named. Degraded cards show a visible "⚠ partial parse" banner — graceful degradation as a
+  feature, shown honestly.
+- Caption nests into the deck's existing three-beat story as **extract → ground → verify**,
+  and states **`$0`, no model** (ties to the "AI economics" slide). It does **not** compete
+  with the deck's canonical "four moves" sentence, and it does **not** claim the three
+  already-converted procs were retroactively grounded — it is framed as "the deterministic
+  analysis the pipeline can now surface," illustrated on existing procs.
 
-- **Left:** the raw `.sql` of a selectable proc (dropdown over the 14 procs).
-- **Right:** the extracted **feature card** rendered as highlighted chips grouped by
-  risk — INNER/LEFT joins, `TOP`+`ORDER`, `FOR JSON AUTO`, decimal columns, temporal —
-  each chip linking (in text) to the skill that handles it.
-- A one-line caption framing the four moves: **raw text → deterministic extraction →
-  grounded AI → independent verification.**
-
-Data source: the committed `features.json` embedded inline as a JS object (generated
-once, pasted in — consistent with how the deck embeds real captured output). Bilingual
-via the existing ENG/UA toggle.
+**Data source:** `demo/features-data.js` (`window.FEATURES = {…};`), **emitted by the
+extractor** and **gate-synced** (§3.4 #3) — loaded via `<script src="features-data.js">`
+(works under `file://`, unlike `fetch`). No hand-paste.
 
 ### 4.2 Updated flow diagram
 
-Add the extraction stage to the deck's `.flow` pipeline diagram and to the README /
-`architecture.md` mermaid flowcharts: a new deterministic box *"feature-extract
-(sqlglot)"* feeding the analyst, drawn in the same style as the golden "oracle lane"
-(deterministic, model-free).
+Add a deterministic **"feature-extract (sqlglot · $0)"** box to the deck's `.flow` diagram
+(and the README/architecture mermaid), drawn in the model-free style — feeding *observation*
+to the side of the pipeline, explicitly **not** on the correctness path.
 
 ---
 
-## 5. Documentation (EN + UK)
+## 5. Documentation (EN only committed)
 
-- **`docs/adr/0008-ast-feature-grounding.md`** (+ `.uk.md`): the decision — deterministic
-  AST extraction grounds the LLM; explicitly *why it is not a transpiler*; how it
-  strengthens the thesis; its determinism/auditability.
-- **`docs/architecture.md`** (+ `.uk`): new subsection + updated diagram for the stage.
-- **`README.md`** (+ `.uk`): mention the grounding stage in "The flow, end to end" and
-  the primitives table; add the extractor to the Layout.
-- **`docs/README.md`** (+ create missing **`docs/README.uk.md`**): index the new ADR.
-- **`demo/README.md`:** fix the two known inconsistencies while here —
-  `5/5 → 12/12` mutants, and the stale "ten steps" → the actual slide set (now +1).
+- **`docs/adr/0008-ast-feature-grounding.md`** (EN): the decision — deterministic AST
+  extraction as grounding/observability; *why it is not a transpiler*; why it holds **no
+  authority** over correctness; the deferral of pipeline wiring behind a measured miss.
+  Phrased as "this ADR records…", not cited as prior authority elsewhere.
+- **`docs/architecture.md`:** a short subsection + the model-free box in the diagram.
+- **`README.md`:** one mention in the flow and the primitives/layout, clearly labeled
+  observability (not a gate).
+- **`docs/README.md`:** index ADR-0008.
+- **`demo/README.md`:** fix the two real inconsistencies — `5/5 → 12/12` mutants, and the
+  slide count (now **16** per language, not "ten steps").
+
+(Ukrainian translations of these docs remain private working copies per `.gitignore` and
+are out of scope to commit.)
 
 ---
 
-## 6. Units & interfaces (isolation)
+## 6. Units & interfaces
 
 | Unit | Does | Used via | Depends on |
 |------|------|----------|------------|
-| `extract-features.py` | SQL text → feature card | CLI + `features.json` JSON contract | `sqlglot`, `relational.sql` schema |
-| `features.json` | the contract | read by analyst, reviewer, gate, demo | — (frozen artifact) |
-| `features-check.sh` | deterministic presence/determinism gate | `verify.sh` | `features.json`, extractor |
-| demo slide | render a card | reads embedded JSON | `features.json` shape |
+| `extract-features.py` | SQL → card; `--emit-demo` → demo data | CLI | `sqlglot` (pinned), `relational.sql` |
+| `corpus/features/*.json` | the fact contract | demo data emit, gate | — (model-free artifact) |
+| `demo/features-data.js` | derived demo data | `demo/index.html` | cards (gate-synced) |
+| `features-check.sh` | presence/determinism/sync/taxonomy/out-of-authority gate | standalone | cards, extractor |
+| demo slide | render a card | reads `window.FEATURES` | demo-data shape |
 
-Every consumer touches only the **`features.json` contract**, so the extractor's
-internals can change without breaking the analyst, reviewer, gate, or demo.
-
----
-
-## 7. Dependencies & risks
-
-- **New dependency:** `sqlglot` (pip). Add to the project's Python deps / `.env.example`
-  note and the extractor's import guard (clear error if missing). Pin a version.
-- **Risk — sqlglot T-SQL coverage:** the temporal procs use `FOR SYSTEM_TIME` and
-  cursors sqlglot may parse partially. Mitigation: detectors are **best-effort and
-  additive** — if a construct doesn't parse cleanly, emit a `parse_note` feature rather
-  than crashing; the card degrades gracefully and the demo still shows what parsed.
-- **Risk — decimal resolution without full type inference:** schema map covers base-table
-  columns; computed/renamed columns may not resolve. Mitigation: mark unresolved decimals
-  `medium` risk with a note, don't over-claim.
-- **Hooks:** the repo's `guard-path`/`stop-differential` hooks are **temporarily
-  disabled** during this work (they gate the per-proc conversion loop, not repo
-  engineering) and **restored at the end** from `.claude/settings.json.bak`.
+Nothing in the conversion loop depends on any of these — by design and by mechanical check.
 
 ---
 
-## 8. Acceptance criteria
+## 7. Deferred: pipeline wiring (evidence-gated)
 
-1. `python corpus/extract-features.py --all` writes a valid, deterministic
-   `features.json` for all 14 procs ($0, no model).
-2. The three converted procs' cards correctly classify their known traps
-   (SearchForCustomers: INNER+LEFT+TOP/ORDER+FOR JSON+like_concat;
-   GetTransactionUpdates: temporal/decimal; GetStockHoldingUpdates: decimal).
-3. `corpus/tests/test_extract_features.py` passes.
-4. `gates/features-check.sh` passes for the manifest procs and is wired into `verify.sh`.
-5. analyst/reviewer definitions reference the card; harness runs the extractor pre-model.
-6. The demo has a working, bilingual interactive feature-extractor slide and an updated
-   flow diagram.
-7. ADR-0008 (EN+UK), architecture/README updates (EN+UK), `docs/README.uk.md`, and the
-   `demo/README.md` fixes are in place.
-8. Hooks restored; `verify.sh` still green on the three converted procs.
+Wiring the card into `analyst`/`reviewer` is **described but not activated**. It turns on
+only when the harness records a **concrete analyst miss the card would have caught**. At
+that point the precedence rule is fixed: **golden > skills > features.json (hint)** — the
+card is never "fact," never outranks a skill or the golden. Until then, activating it would
+grant unearned authority (review consensus).
+
+---
+
+## 8. Dependencies & risks
+
+- **Dependency:** `sqlglot`, pinned in a new **`corpus/requirements.txt`**
+  (`sqlglot==30.23.0`). The extractor guards the import with a clear error. `sqlglot_version`
+  is recorded **inside** each card; a version bump is an explicit "regenerate + review the
+  diff" event, caught by the determinism gate.
+- **Risk — parser drift reddening a gate:** contained — `features-check.sh` is standalone,
+  so parser flake can never redden `verify.sh`/the correctness verdict.
+- **Risk — decimal resolution gaps:** computed/renamed columns resolve to
+  `resolved:false` + "still-money-bearing"; missing schema keys → "unknown"; never silently
+  "not decimal".
+- **Hooks:** unchanged in the committed repo. Restored via `git checkout
+  .claude/settings.json` at the end of this work; the `.bak` is deleted.
+
+---
+
+## 9. Acceptance criteria
+
+1. `python corpus/extract-features.py --all` writes a valid, deterministic card for **all
+   14** procs (`$0`, no model); no proc crashes the parse.
+2. The three converted procs' cards carry their known facts: SearchForCustomers →
+   `join.inner` + `join.left` + `top_order` + `for_json` + `like_concat`;
+   GetTransactionUpdates → `join.left` + ≥4 `decimal_column` + UNION-ALL note;
+   GetStockHoldingUpdates → `LastCostPrice` `decimal_column`. Asserted by a committed
+   expected-fact fixture the test diffs against (mechanical, not eyeball).
+3. `corpus/tests/test_extract_features.py` passes (and skips cleanly without sqlglot).
+4. `gates/features-check.sh` passes and is **not** referenced by `verify.sh`.
+5. The demo has a working bilingual interactive "Feature extractor" slide (16 per language)
+   loading gate-synced `demo/features-data.js`; the flow diagram shows the model-free box.
+6. ADR-0008 (EN), architecture/README/docs-index updates, and the `demo/README.md` fixes
+   are in place. No `*.uk.md` is committed.
+7. Hooks restored (committed `settings.json` intact); `.bak` removed.
+8. `corpus/features/` is referenced by **no** file in the correctness loop (mechanically
+   asserted by the gate).

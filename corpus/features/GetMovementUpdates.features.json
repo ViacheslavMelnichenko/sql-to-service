@@ -1,0 +1,26 @@
+{
+  "features": [],
+  "generated_by": "corpus/extract-features.py",
+  "output_shape": "rowset",
+  "params": [
+    {
+      "name": "@LastCutoff",
+      "type": "DATETIME2(7)"
+    },
+    {
+      "name": "@NewCutoff",
+      "type": "DATETIME2(7)"
+    }
+  ],
+  "parse_notes": [],
+  "parse_status": "ok",
+  "proc": "Integration.GetMovementUpdates",
+  "schema_version": 1,
+  "sqlglot_version": "30.23.0",
+  "tables": [
+    {
+      "alias": "sit",
+      "name": "Warehouse.StockItemTransactions"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "features": [
+    {
+      "detail": "Last Cost Price : Warehouse.StockItemHoldings.LastCostPrice",
+      "kind": "decimal_column",
+      "resolved": true
+    }
+  ],
+  "generated_by": "corpus/extract-features.py",
+  "output_shape": "rowset",
+  "params": [],
+  "parse_notes": [],
+  "parse_status": "ok",
+  "proc": "Integration.GetStockHoldingUpdates",
+  "schema_version": 1,
+  "sqlglot_version": "30.23.0",
+  "tables": [
+    {
+      "alias": "sih",
+      "name": "Warehouse.StockItemHoldings"
+    }
+  ]
+}

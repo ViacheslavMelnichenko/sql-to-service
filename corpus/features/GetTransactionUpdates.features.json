@@ -1,0 +1,83 @@
+{
+  "features": [
+    {
+      "detail": "Outstanding Balance : Purchasing.SupplierTransactions.OutstandingBalance",
+      "kind": "decimal_column",
+      "resolved": true
+    },
+    {
+      "detail": "Outstanding Balance : Sales.CustomerTransactions.OutstandingBalance",
+      "kind": "decimal_column",
+      "resolved": true
+    },
+    {
+      "detail": "Tax Amount : Purchasing.SupplierTransactions.TaxAmount",
+      "kind": "decimal_column",
+      "resolved": true
+    },
+    {
+      "detail": "Tax Amount : Sales.CustomerTransactions.TaxAmount",
+      "kind": "decimal_column",
+      "resolved": true
+    },
+    {
+      "detail": "Total Excluding Tax : Purchasing.SupplierTransactions.AmountExcludingTax",
+      "kind": "decimal_column",
+      "resolved": true
+    },
+    {
+      "detail": "Total Excluding Tax : Sales.CustomerTransactions.AmountExcludingTax",
+      "kind": "decimal_column",
+      "resolved": true
+    },
+    {
+      "detail": "Total Including Tax : Purchasing.SupplierTransactions.TransactionAmount",
+      "kind": "decimal_column",
+      "resolved": true
+    },
+    {
+      "detail": "Total Including Tax : Sales.CustomerTransactions.TransactionAmount",
+      "kind": "decimal_column",
+      "resolved": true
+    },
+    {
+      "detail": "Sales.CustomerTransactions ct -> Sales.Invoices i",
+      "kind": "join.left"
+    },
+    {
+      "detail": "UNION ALL (arms combined, no de-dup)",
+      "kind": "set_op"
+    }
+  ],
+  "generated_by": "corpus/extract-features.py",
+  "output_shape": "rowset",
+  "params": [
+    {
+      "name": "@LastCutoff",
+      "type": "DATETIME2(7)"
+    },
+    {
+      "name": "@NewCutoff",
+      "type": "DATETIME2(7)"
+    }
+  ],
+  "parse_notes": [],
+  "parse_status": "ok",
+  "proc": "Integration.GetTransactionUpdates",
+  "schema_version": 1,
+  "sqlglot_version": "30.23.0",
+  "tables": [
+    {
+      "alias": "st",
+      "name": "Purchasing.SupplierTransactions"
+    },
+    {
+      "alias": "ct",
+      "name": "Sales.CustomerTransactions"
+    },
+    {
+      "alias": "i",
+      "name": "Sales.Invoices"
+    }
+  ]
+}

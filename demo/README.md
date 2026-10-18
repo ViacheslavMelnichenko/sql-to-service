@@ -21,7 +21,10 @@ Navigate with the sidebar, the Back/Next buttons, or the ← / → arrow keys.
 The URL hash tracks the slide, so a link like `demo/index.html#6` opens on a
 specific step.
 
-## The ten steps
+## The narrative spine
+
+The deck is **16 slides per language** (EN/UK mirror 1:1). After the three intro
+slides (Overview, The map, Big picture) the argument runs:
 
 0. **Prerequisites** — `docker compose up -d` (mssql :11433, mongo :37017)
 1. **Non-circular gate** — the oracle frozen before any model (ADR-0001)
@@ -29,9 +32,11 @@ specific step.
 3. **Subagents & skills** — the four Claude Code primitives (ADR-0004)
 4. **The pipeline** — one procedure through four stages, each with a scoped tool
    set and a single artifact; the golden feeds three stages independently (ADR-0001/0004)
+4b. **Feature extractor** — a deterministic sqlglot parse surfaces per-proc facts
+   for review; observability only, `$0`, no model, zero authority over the verdict (ADR-0008)
 5. **The gates** — `bash gates/verify.sh` reproduces the verdict, no model (ADR-0005)
 6. **In-loop hooks** — every transition gated automatically (`.claude/settings.json`)
-7. **Proven teeth** — `bash gates/mutation-check.sh`, 5/5 mutants caught (ADR-0006)
+7. **Proven teeth** — `bash gates/mutation-check.sh`, 12/12 mutants caught (ADR-0006)
 8. **Retry protocol** — failures fed back, cap 2 (`pipeline/retry.md`)
 9. **Measure** — the paid, opt-in headless run and honest reporting (Phase 4)
 

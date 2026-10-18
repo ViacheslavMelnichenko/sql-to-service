@@ -1,0 +1,55 @@
+{
+  "features": [
+    {
+      "detail": "FOR JSON AUTO, ROOT('Customers')",
+      "kind": "for_json"
+    },
+    {
+      "detail": "Sales.Customers c -> Application.Cities ct",
+      "kind": "join.inner"
+    },
+    {
+      "detail": "Sales.Customers c -> Application.People p",
+      "kind": "join.left"
+    },
+    {
+      "detail": "WHERE CONCAT(...) LIKE pattern (CONCAT treats NULL as '')",
+      "kind": "like_concat"
+    },
+    {
+      "detail": "TOP(...) after ORDER BY CustomerName",
+      "kind": "top_order"
+    }
+  ],
+  "generated_by": "corpus/extract-features.py",
+  "output_shape": "for-json",
+  "params": [
+    {
+      "name": "@SearchText",
+      "type": "NVARCHAR(1000)"
+    },
+    {
+      "name": "@MaximumRowsToReturn",
+      "type": "INT"
+    }
+  ],
+  "parse_notes": [],
+  "parse_status": "ok",
+  "proc": "Website.SearchForCustomers",
+  "schema_version": 1,
+  "sqlglot_version": "30.23.0",
+  "tables": [
+    {
+      "alias": "ct",
+      "name": "Application.Cities"
+    },
+    {
+      "alias": "p",
+      "name": "Application.People"
+    },
+    {
+      "alias": "c",
+      "name": "Sales.Customers"
+    }
+  ]
+}

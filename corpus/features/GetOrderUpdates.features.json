@@ -1,0 +1,66 @@
+{
+  "features": [
+    {
+      "detail": "Tax Amount : computed from Sales.OrderLines.TaxRate (computed)",
+      "kind": "decimal_column",
+      "resolved": false
+    },
+    {
+      "detail": "Tax Rate : Sales.OrderLines.TaxRate",
+      "kind": "decimal_column",
+      "resolved": true
+    },
+    {
+      "detail": "Unit Price : Sales.OrderLines.UnitPrice",
+      "kind": "decimal_column",
+      "resolved": true
+    },
+    {
+      "detail": "Sales.Orders o -> Sales.Customers c",
+      "kind": "join.inner"
+    },
+    {
+      "detail": "Sales.Orders o -> Sales.OrderLines ol",
+      "kind": "join.inner"
+    },
+    {
+      "detail": "Sales.Orders o -> Warehouse.PackageTypes pt",
+      "kind": "join.inner"
+    }
+  ],
+  "generated_by": "corpus/extract-features.py",
+  "output_shape": "rowset",
+  "params": [
+    {
+      "name": "@LastCutoff",
+      "type": "DATETIME2(7)"
+    },
+    {
+      "name": "@NewCutoff",
+      "type": "DATETIME2(7)"
+    }
+  ],
+  "parse_notes": [],
+  "parse_status": "ok",
+  "proc": "Integration.GetOrderUpdates",
+  "schema_version": 1,
+  "sqlglot_version": "30.23.0",
+  "tables": [
+    {
+      "alias": "c",
+      "name": "Sales.Customers"
+    },
+    {
+      "alias": "ol",
+      "name": "Sales.OrderLines"
+    },
+    {
+      "alias": "o",
+      "name": "Sales.Orders"
+    },
+    {
+      "alias": "pt",
+      "name": "Warehouse.PackageTypes"
+    }
+  ]
+}

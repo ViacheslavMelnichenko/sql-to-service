@@ -1,0 +1,10 @@
+# Python dependency for corpus/extract-features.py (the AST feature extractor).
+# Pinned exactly: the sqlglot version is recorded inside every feature card, and
+# gates/features-check.sh asserts cards are byte-identical on re-run — so a version
+# bump is an explicit "regenerate + review the diff" event, never a silent change.
+#
+# Install:  python -m pip install -r corpus/requirements.txt
+#
+# This is NOT needed by the correctness gate (gates/verify.sh is stdlib-only); it is
+# only needed to (re)generate the observability feature cards and the demo data.
+sqlglot==30.23.0

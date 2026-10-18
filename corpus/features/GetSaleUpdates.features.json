@@ -1,0 +1,93 @@
+{
+  "features": [
+    {
+      "detail": "Profit : Sales.InvoiceLines.LineProfit",
+      "kind": "decimal_column",
+      "resolved": true
+    },
+    {
+      "detail": "Tax Amount : Sales.InvoiceLines.TaxAmount",
+      "kind": "decimal_column",
+      "resolved": true
+    },
+    {
+      "detail": "Tax Rate : Sales.InvoiceLines.TaxRate",
+      "kind": "decimal_column",
+      "resolved": true
+    },
+    {
+      "detail": "Total Excluding Tax : computed from Sales.InvoiceLines.ExtendedPrice (computed)",
+      "kind": "decimal_column",
+      "resolved": false
+    },
+    {
+      "detail": "Total Including Tax : Sales.InvoiceLines.ExtendedPrice",
+      "kind": "decimal_column",
+      "resolved": true
+    },
+    {
+      "detail": "Unit Price : Sales.InvoiceLines.UnitPrice",
+      "kind": "decimal_column",
+      "resolved": true
+    },
+    {
+      "detail": "Sales.Invoices i -> Sales.Customers c",
+      "kind": "join.inner"
+    },
+    {
+      "detail": "Sales.Invoices i -> Sales.InvoiceLines il",
+      "kind": "join.inner"
+    },
+    {
+      "detail": "Sales.Invoices i -> Warehouse.PackageTypes pt",
+      "kind": "join.inner"
+    },
+    {
+      "detail": "Sales.Invoices i -> Warehouse.StockItems si",
+      "kind": "join.inner"
+    }
+  ],
+  "generated_by": "corpus/extract-features.py",
+  "output_shape": "rowset",
+  "params": [
+    {
+      "name": "@LastCutoff",
+      "type": "DATETIME2(7)"
+    },
+    {
+      "name": "@NewCutoff",
+      "type": "DATETIME2(7)"
+    }
+  ],
+  "parse_notes": [],
+  "parse_status": "ok",
+  "proc": "Integration.GetSaleUpdates",
+  "schema_version": 1,
+  "sqlglot_version": "30.23.0",
+  "tables": [
+    {
+      "alias": "bt",
+      "name": "Sales.Customers"
+    },
+    {
+      "alias": "c",
+      "name": "Sales.Customers"
+    },
+    {
+      "alias": "il",
+      "name": "Sales.InvoiceLines"
+    },
+    {
+      "alias": "i",
+      "name": "Sales.Invoices"
+    },
+    {
+      "alias": "pt",
+      "name": "Warehouse.PackageTypes"
+    },
+    {
+      "alias": "si",
+      "name": "Warehouse.StockItems"
+    }
+  ]
+}

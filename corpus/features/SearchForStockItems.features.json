@@ -1,0 +1,35 @@
+{
+  "features": [
+    {
+      "detail": "FOR JSON AUTO, ROOT('StockItems')",
+      "kind": "for_json"
+    },
+    {
+      "detail": "TOP(...) after ORDER BY StockItemName",
+      "kind": "top_order"
+    }
+  ],
+  "generated_by": "corpus/extract-features.py",
+  "output_shape": "for-json",
+  "params": [
+    {
+      "name": "@SearchText",
+      "type": "NVARCHAR(1000)"
+    },
+    {
+      "name": "@MaximumRowsToReturn",
+      "type": "INT"
+    }
+  ],
+  "parse_notes": [],
+  "parse_status": "ok",
+  "proc": "Website.SearchForStockItems",
+  "schema_version": 1,
+  "sqlglot_version": "30.23.0",
+  "tables": [
+    {
+      "alias": "si",
+      "name": "Warehouse.StockItems"
+    }
+  ]
+}

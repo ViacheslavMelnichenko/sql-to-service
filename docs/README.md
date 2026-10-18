@@ -29,6 +29,7 @@ Each ADR is one frozen decision the pipeline depends on. They are permanent.
 | [0005](adr/0005-tools-bash-then-mcp.md) | **Gate tools: Bash first, MCP later** — gates are POSIX-sh under `gates/`; an MCP server is a labelled stretch. |
 | [0006](adr/0006-mutation-validation.md) | **Mutation validation** — inject known bugs and require the gate to catch every one; a gate never shown to fail is untested. |
 | [0007](adr/0007-purpose-built-seed-two-tranches.md) | **Purpose-built seed, two tranches** — how the seed is grown to cover the procs without becoming a fixture for the answer. |
+| [0008](adr/0008-ast-feature-grounding.md) | **AST feature grounding** — a deterministic sqlglot parse surfaces per-proc facts for review/demo; observability only, proven to hold *no* authority over the verdict. |
 
 ## The pipeline
 

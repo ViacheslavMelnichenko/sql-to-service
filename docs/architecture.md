@@ -69,7 +69,13 @@ flowchart TB
     analyst --> implementer --> testauthor --> reviewer
     skills[".claude/skills/*<br/>conversion standards"] -.->|loaded by| reviewer
     reviewer -->|passes to gate| gate[gates/*.sh]
+
+    extract["feature-extract<br/><i>sqlglot · $0 · no model</i>"] -.->|observation only<br/>no stage reads it| cards[(corpus/features/*)]
 ```
+
+The `feature-extract` box sits deliberately *off* the line — it reads the same T-SQL
+and emits a per-proc card of facts, but nothing in the pipeline or the gate reads
+those cards. It is drawn disconnected because it *is* disconnected; see §5b.
 
 Four **subagents** with genuinely separated context (ADR-0004), not one prompt in a
 loop:
@@ -149,6 +155,24 @@ the prerequisites, and the authentication traps — lives in the runbook,
 
 ---
 
+## 5b. Grounding, to the side
+
+`corpus/extract-features.py` parses each procedure with sqlglot (`dialect="tsql"`)
+and emits a deterministic **feature card** — the joins by kind, the schema-grounded
+decimal outputs, the `FOR JSON` shape, `TOP`/`ORDER` coupling, temporal reads,
+parameters. It exists to make the per-proc semantics legible to a reviewer and in
+the demo, for `$0` and with no model call.
+
+It is **observability, not an oracle** (ADR-0008). It never emits C#, never decides
+*how* to convert, and — the load-bearing part — nothing in the correctness loop
+reads its cards. The non-circular differential against the golden stays the sole
+judge. That powerlessness is proven the same way the gate's teeth are (ADR-0006):
+`gates/features-check.sh` is standalone (never called from `verify.sh`) and fails if
+any agent, `verify.sh`, or `differential.sh` so much as references `corpus/features`.
+So a card can be wrong, stale, or deleted and the accuracy number does not move.
+Wiring the cards into the analyst as grounding is deferred behind a *measured* miss,
+never adopted on faith.
+
 ## 6. Why not the obvious alternatives
 
 - **Why not a deterministic transpiler?** It would be *less* AI, not more, and it
@@ -174,3 +198,4 @@ the prerequisites, and the authentication traps — lives in the runbook,
 | [0004](adr/0004-claude-code-substrate.md) | Built on Claude Code — real agents/skills/hooks/tools |
 | [0005](adr/0005-tools-bash-then-mcp.md) | Bash gate-tools now, MCP as a stretch |
 | [0006](adr/0006-mutation-validation.md) | Mandatory mutation check proves the gate has teeth |
+| [0008](adr/0008-ast-feature-grounding.md) | Deterministic AST feature cards — observability only, proven to hold no authority over the verdict |

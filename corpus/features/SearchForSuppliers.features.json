@@ -1,0 +1,55 @@
+{
+  "features": [
+    {
+      "detail": "FOR JSON AUTO, ROOT('Suppliers')",
+      "kind": "for_json"
+    },
+    {
+      "detail": "Purchasing.Suppliers s -> Application.Cities c",
+      "kind": "join.inner"
+    },
+    {
+      "detail": "Purchasing.Suppliers s -> Application.People p",
+      "kind": "join.left"
+    },
+    {
+      "detail": "WHERE CONCAT(...) LIKE pattern (CONCAT treats NULL as '')",
+      "kind": "like_concat"
+    },
+    {
+      "detail": "TOP(...) after ORDER BY SupplierName",
+      "kind": "top_order"
+    }
+  ],
+  "generated_by": "corpus/extract-features.py",
+  "output_shape": "for-json",
+  "params": [
+    {
+      "name": "@SearchText",
+      "type": "NVARCHAR(1000)"
+    },
+    {
+      "name": "@MaximumRowsToReturn",
+      "type": "INT"
+    }
+  ],
+  "parse_notes": [],
+  "parse_status": "ok",
+  "proc": "Website.SearchForSuppliers",
+  "schema_version": 1,
+  "sqlglot_version": "30.23.0",
+  "tables": [
+    {
+      "alias": "c",
+      "name": "Application.Cities"
+    },
+    {
+      "alias": "p",
+      "name": "Application.People"
+    },
+    {
+      "alias": "s",
+      "name": "Purchasing.Suppliers"
+    }
+  ]
+}
