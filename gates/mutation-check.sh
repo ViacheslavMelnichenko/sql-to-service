@@ -56,8 +56,8 @@ BACKUP=""
 SEEDED=0
 CURPROC=""
 
-restore() { [ -n "$BACKUP" ] && [ -n "$SRC" ] && cp "$BACKUP" "$SRC"; }
-cleanup() { restore; [ -n "$BACKUP" ] && rm -f "$BACKUP"; }
+restore() { if [ -n "$BACKUP" ] && [ -n "$SRC" ]; then cp "$BACKUP" "$SRC"; fi; }
+cleanup() { restore; [ -n "$BACKUP" ] && rm -f "$BACKUP"; return 0; }
 trap cleanup EXIT
 
 # perl -0777 literal find/replace via \Q...\E; die if the anchor is absent (a refactor
