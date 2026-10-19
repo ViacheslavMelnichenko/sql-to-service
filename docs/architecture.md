@@ -182,10 +182,15 @@ It is **observability, not an oracle** (ADR-0008). It never emits C#, never deci
 reads its cards. The non-circular differential against the golden stays the sole
 judge. That powerlessness is proven the same way the gate's teeth are (ADR-0006):
 `gates/features-check.sh` is standalone (never called from `verify.sh`) and fails if
-any agent, `verify.sh`, or `differential.sh` so much as references `corpus/features`.
+any agent, `verify.sh`, `differential.sh`, or the Stop hook (`stop-differential.sh`) so
+much as references `corpus/features`.
 So a card can be wrong, stale, or deleted and the accuracy number does not move.
 Wiring the cards into the analyst as grounding is deferred behind a *measured* miss,
-never adopted on faith.
+never adopted on faith. Feeding the *generator* a card would not make the gate circular —
+the golden judges independently, so it catches a mistake whether or not a card was read;
+the deferral is about not granting the parser unearned influence before the model is shown
+to need it, not about circularity. Only wiring a card into the *judge* would be circular,
+and that is exactly what `features-check.sh` forbids.
 
 ## 6. Why not the obvious alternatives
 

@@ -124,7 +124,12 @@ ok "taxonomy intact — no skill<->extractor drift"
 
 # --- Check 5: out-of-authority proof (teeth, ADR-0006 style) ------------------------
 log "check 5/5 — out-of-authority (no correctness-loop file references corpus/features)"
-LOOP_FILES=(gates/verify.sh gates/differential.sh)
+# The correctness loop is the JUDGE and everything that enforces its verdict in-loop:
+# verify.sh / differential.sh (the gate itself), the Stop and PostToolUse hooks that
+# run the gate during a conversion turn, and every pipeline subagent. If ANY of these
+# read a card, the card would have a say in the verdict — so none may reference it.
+LOOP_FILES=(gates/verify.sh gates/differential.sh \
+  .claude/hooks/stop-differential.sh .claude/hooks/post-write-build.sh)
 while IFS= read -r a; do LOOP_FILES+=("$a"); done < <(ls .claude/agents/*.md 2>/dev/null || true)
 offenders=""
 for f in "${LOOP_FILES[@]}"; do

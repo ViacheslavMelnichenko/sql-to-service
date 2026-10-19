@@ -65,7 +65,8 @@ path and the non-circularity argument weakens.
 Its powerlessness is **proven, not asserted** (ADR-0006 style).
 `gates/features-check.sh` is **standalone** — deliberately **not** called from
 `verify.sh` — and fails if any file in the correctness loop (`.claude/agents/*.md`,
-`gates/verify.sh`, `gates/differential.sh`) so much as references `corpus/features`.
+`gates/verify.sh`, `gates/differential.sh`, `.claude/hooks/stop-differential.sh`) so much
+as references `corpus/features`.
 So the cards can be wrong, stale, or deleted and the published accuracy number does
 not move. The gate also asserts the cards are byte-identical on re-run and that the
 demo's `features-data.js` is a re-emission of the same cards (no hand-paste), and
