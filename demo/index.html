@@ -699,6 +699,13 @@ cat generated/Website.SearchForCustomers.review.md   <span class="c"># the revie
       <p class="lede">Before the gates judge anything, it helps to <em>see</em> what each procedure actually contains. This slide is a read-only lens: it parses the T-SQL into an AST and lists the facts that matter for a faithful conversion — which joins drop rows, where money columns live, how the JSON is shaped. It runs on <code>sqlglot</code>, costs <strong>$0</strong>, and calls no model.</p>
 
       <section class="sec">
+        <p class="sec-eyebrow">The problem it solves</p>
+        <h3 class="sec-title">The gate says pass or fail — it never tells you where the risk was</h3>
+        <p>A green differential proves the output matches golden, but it is silent about <em>what</em> made the conversion hard: a <code>LEFT JOIN</code> whose unmatched rows must still survive, a money column that has to stay exact <code>decimal</code>, a <code>TOP</code> that is only deterministic together with its <code>ORDER BY</code>, the precise nesting of a <code>FOR JSON</code>. Auditing an AI conversion means knowing which of those semantics were load-bearing — and hunting for them by eye, across a whole procedure, is slow and easy to get wrong. This tool parses the T-SQL and hands you that map, deterministically and for <strong>$0</strong>.</p>
+        <p>So why not feed the map to the converter, or let it judge the output? Because facts read from the <em>same SQL the model reads</em> are not independent evidence. Wiring them into the generation path would couple a parser’s blind spots into the conversion; wiring them into the gate would stand up a second oracle derived from the same source — either one reintroduces exactly the circularity the method removes (ADR-0001): the thing that decides correctness is captured from the original <em>before any model runs</em>. The resolution is to keep the map powerful as a <strong>lens</strong> and powerless as a <strong>judge</strong> — and, as the next section shows, to <em>prove</em> that powerlessness rather than assert it.</p>
+      </section>
+
+      <section class="sec">
         <p class="sec-eyebrow">What it is — and what it is not</p>
         <h3 class="sec-title">An observability tool with zero authority over correctness</h3>
         <p>Pick a procedure and read its feature card beside the source. These are <strong>facts, not verdicts</strong>: the extractor never writes C#, never decides <em>how</em> to convert, and — this is the point — <strong>nothing in the correctness loop reads these cards.</strong> The non-circular differential against the golden stays the sole judge. <code>gates/features-check.sh</code> proves that mechanically: it fails if any agent, <code>verify.sh</code>, or <code>differential.sh</code> so much as mentions <code>corpus/features</code>. So this lens can be wrong or absent and the published accuracy number does not move.</p>
@@ -1392,6 +1399,13 @@ cat generated/Website.SearchForCustomers.review.md   <span class="c"># верд�
       <p class="kicker">Крок 4b · ADR-0008 · ґрунтування, не судження</p>
       <h2 class="title">Прочитати SQL так, як це робить пайплайн — безкоштовно</h2>
       <p class="lede">Перш ніж перевірки щось присудять, корисно <em>побачити</em>, що насправді містить кожна процедура. Цей слайд — лінза лише для читання: вона парсить T-SQL у AST і перелічує факти, важливі для вірної конверсії — які join'и відкидають рядки, де живуть грошові колонки, як сформовано JSON. Працює на <code>sqlglot</code>, коштує <strong>$0</strong> і не викликає модель.</p>
+
+      <section class="sec">
+        <p class="sec-eyebrow">Яку проблему вона вирішує</p>
+        <h3 class="sec-title">Перевірка каже «пройдено» чи «ні» — але ніколи не каже, де був ризик</h3>
+        <p>Зелений диференціал доводить, що вивід збігається з golden, але мовчить про те, <em>що саме</em> робило конверсію складною: <code>LEFT JOIN</code>, чиї рядки без відповідності мають вціліти; грошова колонка, що мусить лишитися точним <code>decimal</code>; <code>TOP</code>, детермінований лише разом зі своїм <code>ORDER BY</code>; точна вкладеність <code>FOR JSON</code>. Аудит конверсії від ШІ означає знати, яка саме з цих семантик була несучою — а шукати їх очима по всій процедурі повільно й легко помилитися. Цей інструмент парсить T-SQL і віддає вам цю карту — детерміновано й за <strong>$0</strong>.</p>
+        <p>То чому б не згодувати цю карту конвертеру або не дати їй судити вивід? Бо факти, прочитані з <em>того самого SQL, що його читає модель</em>, не є незалежним доказом. Вплітання їх у шлях генерації вшило б сліпі плями парсера в конверсію; вплітання в перевірку поставило б другий оракул, похідний від того самого джерела — і те, й те повертає саме ту круговість, яку метод усуває (ADR-0001): те, що вирішує правильність, захоплюється з оригіналу <em>до запуску будь-якої моделі</em>. Розв’язок — лишити карту потужною як <strong>лінзу</strong> і безвладною як <strong>суддю</strong> — і, як показує наступна секція, цю безвладність <em>доводити</em>, а не декларувати.</p>
+      </section>
 
       <section class="sec">
         <p class="sec-eyebrow">Що це — і чим воно не є</p>

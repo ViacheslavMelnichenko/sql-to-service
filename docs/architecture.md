@@ -171,7 +171,11 @@ the prerequisites, and the authentication traps — lives in the runbook,
 and emits a deterministic **feature card** — the joins by kind, the schema-grounded
 decimal outputs, the `FOR JSON` shape, `TOP`/`ORDER` coupling, temporal reads,
 parameters. It exists to make the per-proc semantics legible to a reviewer and in
-the demo, for `$0` and with no model call.
+the demo, for `$0` and with no model call. The differential's verdict tells you a
+conversion *matches* golden — not *where* it could have gone subtly wrong (which
+join drops rows, which column needs exact decimal, whether a `TOP` leans on its
+`ORDER BY`), and finding that by eye across a procedure is slow and error-prone. The
+card is that map, read straight from the AST.
 
 It is **observability, not an oracle** (ADR-0008). It never emits C#, never decides
 *how* to convert, and — the load-bearing part — nothing in the correctness loop
