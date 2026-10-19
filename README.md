@@ -178,7 +178,7 @@ flowchart TB
 | --- | --- | --- |
 | **Subagents** | `.claude/agents/{analyst,implementer,test-author,reviewer}.md` | Context separation is built in, not imitated. The `analyst` is read-only and writes a spec; the `test-author` writes tests without seeing what was convenient for the `implementer`. |
 | **Skills** | `.claude/skills/*` | Conversion knowledge (how to map `decimal` → `Decimal128`, how to model a result set as a document) lives in versioned files the `reviewer` checks against — not in an ephemeral prompt. |
-| **Hooks** | `.claude/settings.json` | `PostToolUse` builds after every write; `Stop` runs the differential before the agent may finish; `PreToolUse` blocks writes outside allowed folders. Gates run *in the loop*, not after the fact. |
+| **Hooks** | `.claude/settings.json` | `PostToolUse` builds after every `.cs`/`.csproj` write; `Stop` runs the differential before the agent may finish; `PreToolUse` blocks writes outside allowed folders. Gates run *in the loop*, not after the fact. |
 | **Tools** | `gates/*.sh` (Bash now; an MCP server is a planned stretch) | The gate is a deterministic tool the agent *calls* — the model never grades itself. |
 
 The harness runs Claude Code **headless** (`claude -p …`) once per procedure and

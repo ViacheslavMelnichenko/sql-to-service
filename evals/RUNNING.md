@@ -146,7 +146,7 @@ best-effort per-subagent-stage (analyst/implementer/test-author/reviewer) token
 attribution parsed from the stream transcript. The stage breakdown reports
 `available: false` with a `reason` when the transcript lacks the linkage, so a
 missing split is never faked. `aggregate.py` rolls both up across the k samples
-(`wall_seconds` distribution and a collapsed `stage_breakdown`).
+(`wall_seconds` distribution and a collapsed `stage_breakdown`). The committed `run-001.sample-01.json` predates the `per_attempt`/`stage_breakdown` fields and carries neither; a future live sample regenerated with the current harness will include them.
 
 ---
 

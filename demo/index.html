@@ -356,7 +356,7 @@
         <ul class="clean">
           <li><strong>A non-circular gate.</strong> The correctness oracle is captured from the <em>original</em> procedure <em>before any model runs</em>, so the AI cannot collude with its own judge. <span class="muted">(Slides 4–5.)</span></li>
           <li><strong>Agentic engineering, not a prompt.</strong> Staged Claude Code subagents with separated context, governed by skills, gated by hooks. <span class="muted">(Slides 6–9.)</span></li>
-          <li><strong>Honest measurement.</strong> A harness runs the real agent headless and reports accuracy <em>and</em> cost — failures included. <span class="muted">(Slides 12–13.)</span></li>
+          <li><strong>Honest measurement.</strong> A harness runs the real agent headless and reports accuracy <em>and</em> cost — failures included. <span class="muted">(Slides 13–14.)</span></li>
         </ul>
         <p class="muted">Navigate with the sidebar, the buttons below, or the <kbd>←</kbd>&nbsp;<kbd>→</kbd> arrow keys. <kbd>Space</kbd> and <kbd>PageDown</kbd> scroll the current page.</p>
       </section>
@@ -708,7 +708,7 @@ cat generated/Website.SearchForCustomers.review.md   <span class="c"># the revie
       <section class="sec">
         <p class="sec-eyebrow">What it is — and what it is not</p>
         <h3 class="sec-title">An observability tool with zero authority over correctness</h3>
-        <p>Pick a procedure and read its feature card beside the source. These are <strong>facts, not verdicts</strong>: the extractor never writes C#, never decides <em>how</em> to convert, and — this is the point — <strong>nothing in the correctness loop reads these cards.</strong> The non-circular differential against the golden stays the sole judge. <code>gates/features-check.sh</code> proves that mechanically: it fails if any agent, <code>verify.sh</code>, or <code>differential.sh</code> so much as mentions <code>corpus/features</code>. So this lens can be wrong or absent and the published accuracy number does not move.</p>
+        <p>Pick a procedure and read its feature card beside the source. These are <strong>facts, not verdicts</strong>: the extractor never writes C#, never decides <em>how</em> to convert, and — this is the point — <strong>nothing in the correctness loop reads these cards.</strong> The non-circular differential against the golden stays the sole judge. <code>gates/features-check.sh</code> proves that mechanically: it fails if any agent, <code>verify.sh</code>, <code>differential.sh</code>, or the in-loop hooks (<code>stop-differential.sh</code>, <code>post-write-build.sh</code>) so much as mention <code>corpus/features</code>. So this lens can be wrong or absent and the published accuracy number does not move.</p>
       </section>
 
       <div class="fx" data-fx="en"></div>
@@ -1058,7 +1058,7 @@ cleared 3   ·   failed:differential 0   ·   flaky 0   ·   failed:retry_cap 0<
         <ul class="clean">
           <li><strong>Некругова перевірка.</strong> Оракул правильності захоплюється з <em>оригінальної</em> процедури <em>ще до запуску будь-якої моделі</em>, тож AI не може змовитися з власним суддею. <span class="muted">(Слайди 4–5.)</span></li>
           <li><strong>Агентна інженерія, а не промпт.</strong> Поетапні субагенти Claude Code з розділеним контекстом, керовані скілами, обмежені хуками. <span class="muted">(Слайди 6–9.)</span></li>
-          <li><strong>Чесне вимірювання.</strong> Харнес запускає реального агента headless і звітує точність <em>і</em> вартість — включно з провалами. <span class="muted">(Слайди 12–13.)</span></li>
+          <li><strong>Чесне вимірювання.</strong> Харнес запускає реального агента headless і звітує точність <em>і</em> вартість — включно з провалами. <span class="muted">(Слайди 13–14.)</span></li>
         </ul>
         <p class="muted">Навігація — бічною панеллю, кнопками внизу або стрілками <kbd>←</kbd>&nbsp;<kbd>→</kbd>. <kbd>Space</kbd> і <kbd>PageDown</kbd> гортають поточну сторінку.</p>
       </section>
@@ -1410,7 +1410,7 @@ cat generated/Website.SearchForCustomers.review.md   <span class="c"># верд�
       <section class="sec">
         <p class="sec-eyebrow">Що це — і чим воно не є</p>
         <h3 class="sec-title">Інструмент спостережності без жодної влади над правильністю</h3>
-        <p>Оберіть процедуру й прочитайте її картку фіч поруч із джерелом. Це <strong>факти, а не вироки</strong>: екстрактор ніколи не пише C#, ніколи не вирішує, <em>як</em> конвертувати, і — ось у чому суть — <strong>ніщо в циклі правильності не читає ці картки.</strong> Некругова диференціальна перевірка проти golden лишається єдиним суддею. <code>gates/features-check.sh</code> доводить це механічно: вона падає, якщо будь-який агент, <code>verify.sh</code> чи <code>differential.sh</code> бодай згадає <code>corpus/features</code>. Тож ця лінза може бути хибною чи відсутньою — число точності не зрушить.</p>
+        <p>Оберіть процедуру й прочитайте її картку фіч поруч із джерелом. Це <strong>факти, а не вироки</strong>: екстрактор ніколи не пише C#, ніколи не вирішує, <em>як</em> конвертувати, і — ось у чому суть — <strong>ніщо в циклі правильності не читає ці картки.</strong> Некругова диференціальна перевірка проти golden лишається єдиним суддею. <code>gates/features-check.sh</code> доводить це механічно: вона падає, якщо будь-який агент, <code>verify.sh</code>, <code>differential.sh</code> чи внутрішньоциклові хуки (<code>stop-differential.sh</code>, <code>post-write-build.sh</code>) бодай згадають <code>corpus/features</code>. Тож ця лінза може бути хибною чи відсутньою — число точності не зрушить.</p>
       </section>
 
       <div class="fx" data-fx="uk"></div>

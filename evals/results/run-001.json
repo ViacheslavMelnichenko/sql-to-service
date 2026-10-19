@@ -19,6 +19,7 @@
   "non_independent_procs": [],
   "clean_sweep": true,
   "cost_usd_total": 10.906673,
+  "wall_seconds_total": 3014.7,
   "per_proc": [
     {
       "proc": "Website.SearchForCustomers",
@@ -48,9 +49,24 @@
       "output_tokens": [
         10585
       ],
+      "input_tokens": [
+        3034
+      ],
       "num_turns": [
         30
       ],
+      "wall_seconds": {
+        "per_sample": [
+          1161.5
+        ],
+        "mean": 1161.5,
+        "total": 1161.5
+      },
+      "stage_breakdown": {
+        "available": false,
+        "samples_with_breakdown": 0,
+        "reason": "no sample carried a per-stage breakdown"
+      },
       "source_sha256_per_sample": [
         "1dcccb51a96a9fd8aac46c1d8216f0a66a177bc474ef24099abb184e1f435c5b"
       ]
@@ -83,9 +99,24 @@
       "output_tokens": [
         13118
       ],
+      "input_tokens": [
+        26
+      ],
       "num_turns": [
         24
       ],
+      "wall_seconds": {
+        "per_sample": [
+          801.9
+        ],
+        "mean": 801.9,
+        "total": 801.9
+      },
+      "stage_breakdown": {
+        "available": false,
+        "samples_with_breakdown": 0,
+        "reason": "no sample carried a per-stage breakdown"
+      },
       "source_sha256_per_sample": [
         "528ba3e2a89781f7dd15a88df6bd5562972bb1a5957dd4514ab82d5be91a103c"
       ]
@@ -118,9 +149,24 @@
       "output_tokens": [
         16983
       ],
+      "input_tokens": [
+        79
+      ],
       "num_turns": [
         44
       ],
+      "wall_seconds": {
+        "per_sample": [
+          1051.3
+        ],
+        "mean": 1051.3,
+        "total": 1051.3
+      },
+      "stage_breakdown": {
+        "available": false,
+        "samples_with_breakdown": 0,
+        "reason": "no sample carried a per-stage breakdown"
+      },
       "source_sha256_per_sample": [
         "cc2615ece5bdac79d0ec83c285cc94f5f3793621e5a81c42d06e996bce73f6c7"
       ]

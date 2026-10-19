@@ -33,9 +33,12 @@ corrections, each folded into this revision:
    reproduce-the-numbers script. Importing `sqlglot` into it would make a pip package a
    prerequisite of the headline verdict and import parser-version flake. → The new gate is
    **standalone**, never composed into `verify.sh`.
-4. **`*.uk.md` is gitignored** (`.gitignore:33`, "never committed"). → **No committed
-   Ukrainian doc files.** Bilingualism lives only in the demo's EN/UA toggle, where the
-   repo already keeps it.
+4. **~~`*.uk.md` is gitignored~~ (superseded — the `*.uk.md` docs ARE committed).**
+   `.gitignore` carries no `*.uk.md` rule (line 33 is the `# OS / editor` block —
+   `.DS_Store`/`Thumbs.db`/`.idea/`/`.vscode/`). The earlier plan to keep the
+   translations private was dropped: 17 `*.uk.md` files (README, `docs/architecture`,
+   all eight ADRs, `pipeline/retry`, etc.) are tracked. → Bilingualism lives in **both**
+   the committed docs and the demo's EN/UA toggle.
 5. **Hooks:** the committed `.claude/settings.json` *has* the three hooks; they were only
    disabled in the working tree for this repo-engineering. → Restore via
    `git checkout .claude/settings.json` (the `.bak` is itself gitignored). No hook changes
@@ -243,8 +246,8 @@ to the side of the pipeline, explicitly **not** on the correctness path.
 - **`demo/README.md`:** fix the two real inconsistencies — `5/5 → 12/12` mutants, and the
   slide count (now **16** per language, not "ten steps").
 
-(Ukrainian translations of these docs remain private working copies per `.gitignore` and
-are out of scope to commit.)
+(Ukrainian translations of these docs are committed alongside their English
+counterparts — `.gitignore` has no `*.uk.md` rule — and are kept in sync.)
 
 ---
 
@@ -302,7 +305,7 @@ grant unearned authority (review consensus).
 5. The demo has a working bilingual interactive "Feature extractor" slide (16 per language)
    loading gate-synced `demo/features-data.js`; the flow diagram shows the model-free box.
 6. ADR-0008 (EN), architecture/README/docs-index updates, and the `demo/README.md` fixes
-   are in place. No `*.uk.md` is committed.
+   are in place. (The `*.uk.md` translations are committed, not withheld.)
 7. Hooks restored (committed `settings.json` intact); `.bak` removed.
 8. `corpus/features/` is referenced by **no** file in the correctness loop (mechanically
    asserted by the gate).

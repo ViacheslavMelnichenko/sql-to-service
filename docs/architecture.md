@@ -111,8 +111,8 @@ flowchart LR
 **Hooks** (`.claude/settings.json`) make gating a property of the loop, not a
 post-hoc script:
 
-- **`PostToolUse`** builds after every write to `generated/` — a non-compiling
-  service never advances.
+- **`PostToolUse`** builds after every `.cs`/`.csproj` write under `generated/` — a
+  non-compiling service never advances.
 - **`Stop`** runs the differential before the agent may finish — a conversion that
   doesn't match golden cannot be declared done; the failure is fed back as
   structured feedback and the agent retries (cap 2).
@@ -182,8 +182,8 @@ It is **observability, not an oracle** (ADR-0008). It never emits C#, never deci
 reads its cards. The non-circular differential against the golden stays the sole
 judge. That powerlessness is proven the same way the gate's teeth are (ADR-0006):
 `gates/features-check.sh` is standalone (never called from `verify.sh`) and fails if
-any agent, `verify.sh`, `differential.sh`, or the Stop hook (`stop-differential.sh`) so
-much as references `corpus/features`.
+any agent, `verify.sh`, `differential.sh`, or the in-loop hooks (`stop-differential.sh`,
+`post-write-build.sh`) so much as references `corpus/features`.
 So a card can be wrong, stale, or deleted and the accuracy number does not move.
 Wiring the cards into the analyst as grounding is deferred behind a *measured* miss,
 never adopted on faith. Feeding the *generator* a card would not make the gate circular —
@@ -217,4 +217,5 @@ and that is exactly what `features-check.sh` forbids.
 | [0004](adr/0004-claude-code-substrate.md) | Built on Claude Code — real agents/skills/hooks/tools |
 | [0005](adr/0005-tools-bash-then-mcp.md) | Bash gate-tools now, MCP as a stretch |
 | [0006](adr/0006-mutation-validation.md) | Mandatory mutation check proves the gate has teeth |
+| [0007](adr/0007-purpose-built-seed-two-tranches.md) | Purpose-built seed, grown in two tranches to cover the procs without becoming a fixture for the answer |
 | [0008](adr/0008-ast-feature-grounding.md) | Deterministic AST feature cards — observability only, proven to hold no authority over the verdict |
